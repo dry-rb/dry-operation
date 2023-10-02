@@ -3,8 +3,8 @@
 Gem::Specification.new do |spec|
   spec.name = "dry-operation"
   spec.version = "0.0.0"
-  spec.authors = ["Tim Riley", "Marc Busque", "Brooke Kuhlmann"]
-  spec.email = ["tim@riley.id.au", "marc@lamarciana.com", "brooke@alchemists.io"]
+  spec.authors = ["dry-rb team"]
+  spec.email = ["gems@dry-rb.org"]
   spec.homepage = "https://dry-rb.org/gems/dry-operation"
   spec.summary = "A domain specific language for composable business transaction workflows."
   spec.license = "MIT"
