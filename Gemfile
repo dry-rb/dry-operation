@@ -1,28 +1,26 @@
 # frozen_string_literal: true
 
-ruby File.read(".ruby-version").strip
-
 source "https://rubygems.org"
 
 gemspec
 
-group :code_quality do
-  gem "git-lint", "~> 6.0"
-  gem "reek", "~> 6.1", require: false
-  gem "rubocop", "~> 1.56"
-  gem "simplecov", "~> 0.22", require: false
+group :tools do
+  gem "debug"
+end
+
+group :docs do
+  gem "redcarpet", platform: :mri
+  gem "yard"
+  gem "yard-junk"
 end
 
 group :development do
-  gem "rake", "~> 13.0"
+  gem "rake"
+  gem "rubocop"
 end
 
 group :test do
-  gem "guard-rspec", "~> 4.7", require: false
-  gem "rspec", "~> 3.12"
-end
-
-group :tools do
-  gem "amazing_print", "~> 1.4"
-  gem "debug", "~> 1.8"
+  gem "guard-rspec"
+  gem "rspec"
+  gem "simplecov"
 end
