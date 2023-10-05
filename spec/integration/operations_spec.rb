@@ -40,4 +40,202 @@ RSpec.describe "Operations" do
       klass.new.divide_by_zero_then_add_one(1)
     ).to eq(Failure(:not_possible))
   end
+
+  it "automatically prepends #steps around #call" do
+    klass = Class.new(Dry::Operation) do
+      def call(x)
+        step add_one(x)
+      end
+
+      def add_one(x) = Success(x + 1)
+    end
+
+    expect(
+      klass.new.(1)
+    ).to eq(Success(2))
+  end
+
+  it "keeps prepending down the inheritance tree" do
+    klass = Class.new(Dry::Operation)
+    qlass = Class.new(klass) do
+      def call(x)
+        step add_one(x)
+      end
+
+      def add_one(x) = Success(x + 1)
+    end
+
+    expect(
+      qlass.new.(1)
+    ).to eq(Success(2))
+  end
+
+  context ".operate_on" do
+    it "allows prepending around a method other than #call" do
+      klass = Class.new(Dry::Operation) do
+        operate_on :run
+
+        def run(x)
+          step add_one(x)
+        end
+
+        def add_one(x) = Success(x + 1)
+      end
+
+      expect(
+        klass.new.run(1)
+      ).to eq(Success(2))
+    end
+
+    it "keeps prepending down the inheritance tree" do
+      klass = Class.new(Dry::Operation) do
+        operate_on :run
+      end
+      qlass = Class.new(klass) do
+        def run(x)
+          step add_one(x)
+        end
+
+        def add_one(x) = Success(x + 1)
+      end
+
+      expect(
+        qlass.new.run(1)
+      ).to eq(Success(2))
+    end
+
+    it "stops prepending #call when a different method is passed" do
+      klass = Class.new(Dry::Operation) do
+        operate_on :run
+
+        def call(x)
+          step add_one(x)
+        end
+
+        def add_one(x) = Success(x + 1)
+      end
+
+      expect(
+        klass.new.(1)
+      ).to eq(2)
+    end
+
+    it "allows prepending around several methods by passing multiple arguments" do
+      klass = Class.new(Dry::Operation) do
+        operate_on :run, :apply
+
+        def run(x)
+          step add_one(x)
+        end
+
+        def apply(x)
+          step add_one(x)
+        end
+
+        def add_one(x) = Success(x + 1)
+      end
+
+      expect(
+        [klass.new.apply(1), klass.new.run(1)]
+      ).to eq([Success(2), Success(2)])
+    end
+
+    it "raises an error when called after any of the given methods has already been defined in self" do
+      expect {
+        Class.new(Dry::Operation) do
+          def run; end
+          operate_on :run
+        end
+      }.to raise_error(Dry::Operation::MethodsToPrependAlreadyDefinedError)
+    end
+
+    it "doesn't raise an error when called after any of the given method has been defined on a parent class" do
+      klass = Class.new(Dry::Operation) do
+        def run; end
+      end
+
+      expect {
+        Class.new(klass) do
+          operate_on :run
+        end
+      }.not_to raise_error
+    end
+
+    it "raises an error when called after prepending a method to self" do
+      expect {
+        Class.new(Dry::Operation) do
+          def call; end
+          operate_on :run
+        end
+      }.to raise_error(Dry::Operation::PrependConfigurationError)
+    end
+
+    it "doesn't raise an error when called after prepending a method to a parent class" do
+      klass = Class.new(Dry::Operation) do
+        def call; end
+      end
+
+      expect {
+        Class.new(klass) do
+          operate_on :run
+        end
+      }.not_to raise_error
+    end
+  end
+
+  context ".skip_prepending" do
+    it "prevents prepending around any method" do
+      klass = Class.new(Dry::Operation) do
+        skip_prepending
+
+        def call(x)
+          step add_one(x)
+        end
+
+        def add_one(x) = Success(x + 1)
+      end
+
+      expect(
+        klass.new.(1)
+      ).to eq(2)
+    end
+
+    it "prevents prepending down the inheritance tree" do
+      klass = Class.new(Dry::Operation) do
+        skip_prepending
+      end
+      qlass = Class.new(klass) do
+        def call(x)
+          step add_one(x)
+        end
+
+        def add_one(x) = Success(x + 1)
+      end
+
+      expect(
+        qlass.new.(1)
+      ).to eq(2)
+    end
+
+    it "raises an error when called after a prepended method has already been defined in self" do
+      expect {
+        Class.new(Dry::Operation) do
+          def call; end
+          skip_prepending
+        end
+      }.to raise_error(Dry::Operation::PrependConfigurationError)
+    end
+
+    it "doesn't raise an error when called after a prepended method has been defined on a parent class" do
+      klass = Class.new(Dry::Operation) do
+        def call; end
+      end
+
+      expect {
+        Class.new(klass) do
+          skip_prepending
+        end
+      }.not_to raise_error
+    end
+  end
 end
