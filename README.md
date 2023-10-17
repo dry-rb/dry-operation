@@ -2,7 +2,7 @@
 [gem]: https://rubygems.org/gems/dry-operation
 [actions]: https://github.com/dry-rb/dry-operation/actions
 
-# dry-operation [![Gem Version](https://badge.fury.io/rb/dry-operation.svg)][gem] [![CI Status](https://github.com/dry-rb/dry-operation/workflows/ci/badge.svg)][actions]
+# dry-operation [![Gem Version](https://badge.fury.io/rb/dry-operation.svg)][gem] [![Continuous Integration](https://github.com/dry-rb/dry-operation/actions/workflows/ci.yml/badge.svg)][actions]
 
 ## Links
 
