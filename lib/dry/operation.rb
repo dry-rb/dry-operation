@@ -63,6 +63,7 @@ module Dry
       end
     end
     loader.setup
+    loader.eager_load_dir("#{__dir__}/operation/plugins")
 
     # Wraps block's return value in a {Success}
     #
