@@ -4,7 +4,7 @@ module Dry
   class Operation
     module ClassContext
       # @api private
-      class MethodPrepender < Module
+      class StepsMethodPrepender < Module
         def initialize(method:)
           super()
           @method = method

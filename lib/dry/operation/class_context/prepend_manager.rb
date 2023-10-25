@@ -33,7 +33,7 @@ module Dry
         def call(method:)
           return self unless @methods_to_prepend.include?(method)
 
-          @klass.include(MethodPrepender.new(method: method))
+          @klass.include(StepsMethodPrepender.new(method: method))
           @prepended_methods += [method]
         end
 
