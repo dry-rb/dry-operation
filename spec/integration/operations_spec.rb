@@ -181,6 +181,23 @@ RSpec.describe "Operations" do
         end
       }.not_to raise_error
     end
+
+    it "doesn't leak from subclasses to other classes in the inheritance tree" do
+      klass = Class.new(Dry::Operation) do
+        def add_one(x) = Success(x + 1)
+      end
+      Class.new(klass) do
+        operate_on :run
+      end
+
+      klass.define_method(:run) do |x|
+        step add_one(x)
+      end
+
+      expect(
+        klass.new.run(1)
+      ).to eq(2)
+    end
   end
 
   context ".skip_prepending" do
@@ -236,6 +253,23 @@ RSpec.describe "Operations" do
           skip_prepending
         end
       }.not_to raise_error
+    end
+
+    it "doesn't leak from subclasses to other classes in the inheritance tree" do
+      klass = Class.new(Dry::Operation) do
+        def add_one(x) = Success(x + 1)
+      end
+      Class.new(klass) do
+        skip_prepending
+      end
+
+      klass.define_method(:call) do |x|
+        step add_one(x)
+      end
+
+      expect(
+        klass.new.(1)
+      ).to eq(Success(2))
     end
   end
 end

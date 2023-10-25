@@ -20,33 +20,29 @@ module Dry
           if already_defined_methods.any?
             raise MethodsToPrependAlreadyDefinedError.new(methods: already_defined_methods)
           else
-            with(methods_to_prepend: methods)
+            @methods_to_prepend = methods
           end
         end
 
         def void
           ensure_pristine
 
-          with(methods_to_prepend: [])
-        end
-
-        def with(
-          klass: @klass,
-          methods_to_prepend: @methods_to_prepend,
-          prepended_methods: @prepended_methods
-        )
-          self.class.new(
-            klass: klass,
-            methods_to_prepend: methods_to_prepend,
-            prepended_methods: prepended_methods
-          )
+          @methods_to_prepend = []
         end
 
         def call(method:)
           return self unless @methods_to_prepend.include?(method)
 
           @klass.include(MethodPrepender.new(method: method))
-          with(prepended_methods: @prepended_methods + [method])
+          @prepended_methods += [method]
+        end
+
+        def for_subclass(subclass)
+          self.class.new(
+            klass: subclass,
+            methods_to_prepend: @methods_to_prepend.dup,
+            prepended_methods: []
+          )
         end
 
         private

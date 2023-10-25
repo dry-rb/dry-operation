@@ -20,9 +20,7 @@ module Dry
       #  already been defined in self
       # @raise [PrependConfigurationError] if there's already a prepended method
       def operate_on(*methods)
-        @_mutex.synchronize do
-          @_prepend_manager = @_prepend_manager.register(*methods)
-        end
+        @_prepend_manager.register(*methods)
       end
 
       # Skips prepending any method
@@ -31,15 +29,12 @@ module Dry
       #
       # @raise [PrependConfigurationError] if there's already a prepended method
       def skip_prepending
-        @_mutex.synchronize do
-          @_prepend_manager = @_prepend_manager.void
-        end
+        @_prepend_manager.void
       end
 
       # @api private
       def inherited(klass)
         super
-        klass.instance_variable_set(:@_mutex, Mutex.new)
         if klass.superclass == Dry::Operation
           ClassContext.directly_inherited(klass)
         else
@@ -60,10 +55,7 @@ module Dry
       def self.indirectly_inherited(klass)
         klass.instance_variable_set(
           :@_prepend_manager,
-          klass.superclass.instance_variable_get(:@_prepend_manager).with(
-            klass: klass,
-            prepended_methods: []
-          )
+          klass.superclass.instance_variable_get(:@_prepend_manager).for_subclass(klass)
         )
       end
 
@@ -72,9 +64,7 @@ module Dry
         def method_added(method)
           super
 
-          @_mutex.synchronize do
-            @_prepend_manager = @_prepend_manager.call(method: method)
-          end
+          @_prepend_manager.call(method: method)
         end
       end
     end
