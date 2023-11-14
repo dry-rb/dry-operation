@@ -5,6 +5,12 @@ require "spec_helper"
 RSpec.describe Dry::Operation do
   include Dry::Monads[:result]
 
+  it "configures loader" do
+    expect do
+      described_class.loader.eager_load(force: true)
+    end.not_to raise_error
+  end
+
   describe "#steps" do
     it "wraps block's return value in a Success" do
       klass = Class.new(described_class) do
