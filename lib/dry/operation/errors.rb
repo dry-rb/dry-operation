@@ -22,5 +22,15 @@ module Dry
         MSG
       end
     end
+
+    # Defined failure hook has wrong arity
+    class WrongFailureHookArityError < ::StandardError
+      def initialize(hook:)
+        super <<~MSG
+          ##{hook.name} must accept 1 (failure) or 2 (failure, method name) \
+          arguments, but its arity is #{hook.arity}
+        MSG
+      end
+    end
   end
 end
