@@ -53,11 +53,11 @@ module Dry
   #
   # Under the hood, the `#call` method is decorated to allow skipping the rest
   # of its execution when a failure is encountered. You can choose to use another
-  # method with {ClassContext#operate_on}:
+  # method with {ClassContext#operate_on} (which also accepts a list of methods):
   #
   # ```ruby
   # class MyOperation < Dry::Operation
-  #   operate_on :run
+  #   operate_on :run # or operate_on :run, :call
   #
   #   def run(input)
   #     attrs = step validate(input)
@@ -70,8 +70,31 @@ module Dry
   # end
   # ```
   #
+  # As you can see, the aforementioned behavior allows you to write your flow
+  # in a linear fashion. Failures are mostly handled locally by each individual
+  # operation. However, you can also define a global failure handler by defining
+  # an `#on_failure` method. It will be called with the wrapped failure value
+  # and, in the case of accepting a second argument, the name of the method that
+  # defined the flow:
+  #
+  # ```ruby
+  # class MyOperation < Dry::Operation
+  #   def call(input)
+  #     attrs = step validate(input)
+  #     user = step persist(attrs)
+  #     step notify(user)
+  #     user
+  #   end
+  #
+  #   def on_failure(user) # or def on_failure(failure_value, method_name)
+  #     log_failure(user)
+  #   end
+  # end
+  # ```
+  #
   # You can opt out altogether of this behavior via {ClassContext#skip_prepending}. If so,
-  # you manually need to wrap your flow within the {#steps} method.
+  # you manually need to wrap your flow within the {#steps} method and manually
+  # handle global failures.
   #
   # ```ruby
   # class MyOperation < Dry::Operation
@@ -83,6 +106,8 @@ module Dry
   #       user = step persist(attrs)
   #       step notify(user)
   #       user
+  #     end.tap do |result|
+  #       log_failure(result.failure) if result.failure?
   #     end
   #   end
   #

@@ -70,6 +70,165 @@ RSpec.describe "Operations" do
     ).to eq(Success(2))
   end
 
+  context "#on_failure" do
+    it "is called when prepending if a failure is returned" do
+      klass = Class.new(Dry::Operation) do
+        attr_reader :failure
+
+        def initialize
+          super
+          @failure = nil
+        end
+
+        def call(x)
+          step divide_by_zero(x)
+        end
+
+        def divide_by_zero(_x) = Failure(:not_possible)
+
+        def on_failure(failure)
+          @failure = failure
+        end
+      end
+      instance = klass.new
+
+      instance.(1)
+
+      expect(
+        instance.failure
+      ).to be(:not_possible)
+    end
+
+    it "isn't called if a success is returned" do
+      klass = Class.new(Dry::Operation) do
+        attr_reader :failure
+
+        def initialize
+          super
+          @failure = nil
+        end
+
+        def call(x)
+          step add_one(x)
+        end
+
+        def add_one(x) = Success(x + 1)
+
+        def on_failure(failure)
+          @failure = failure
+        end
+      end
+      instance = klass.new
+
+      instance.(1)
+
+      expect(
+        instance.failure
+      ).to be(nil)
+    end
+
+    it "is given the prepended method name when it accepts a second argument" do
+      klass = Class.new(Dry::Operation) do
+        attr_reader :method_name
+
+        def initialize
+          super
+          @method_name = nil
+        end
+
+        def call(x)
+          step divide_by_zero(x)
+        end
+
+        def divide_by_zero(_x) = Failure(:not_possible)
+
+        def on_failure(_failure, method_name)
+          @method_name = method_name
+        end
+      end
+      instance = klass.new
+
+      instance.(1)
+
+      expect(
+        instance.method_name
+      ).to be(:call)
+    end
+
+    it "has its arity checked and a meaningful error is raised when not conforming" do
+      klass = Class.new(Dry::Operation) do
+        def call(x)
+          step divide_by_zero(x)
+        end
+
+        def divide_by_zero(_x) = Failure(:not_possible)
+
+        def on_failure(_failure, _method_name, _unknown); end
+      end
+
+      expect { klass.new.(1) }.to raise_error(Dry::Operation::FailureHookArityError, /arity is 3/)
+    end
+
+    it "can be defined in a parent class" do
+      klass = Class.new(Dry::Operation) do
+        attr_reader :failure
+
+        def initialize
+          super
+          @failure = nil
+        end
+
+        def on_failure(failure)
+          @failure = failure
+        end
+      end
+      qlass = Class.new(klass) do
+        def call(x)
+          step divide_by_zero(x)
+        end
+
+        def divide_by_zero(_x) = Failure(:not_possible)
+      end
+      instance = qlass.new
+
+      instance.(1)
+
+      expect(
+        instance.failure
+      ).to be(:not_possible)
+    end
+
+    it "can be a private method" do
+      klass = Class.new(Dry::Operation) do
+        attr_reader :failure
+
+        def initialize
+          super
+          @failure = nil
+        end
+
+        def call(x)
+          step divide_by_zero(x)
+        end
+
+        def divide_by_zero(_x) = Failure(:not_possible)
+
+        private
+
+        def on_failure(failure)
+          @failure = failure
+        end
+      end
+      instance = klass.new
+
+      instance.(1)
+
+      expect(
+        instance.failure
+      ).to be(:not_possible)
+    end
+  end
+
   context ".operate_on" do
     it "allows prepending around a method other than #call" do
       klass = Class.new(Dry::Operation) do
