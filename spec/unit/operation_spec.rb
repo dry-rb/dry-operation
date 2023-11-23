@@ -55,4 +55,38 @@ RSpec.describe Dry::Operation do
       }.to throw_symbol(:halt, failure)
     end
   end
+
+  describe "#intercepting_failure" do
+    it "forwards the block's output when it's not a failure" do
+      expect(
+        described_class.new.intercepting_failure(-> {}) { :foo }
+      ).to be(:foo)
+    end
+
+    it "doesn't call the handler when the block doesn't return a failure" do
+      called = false
+
+      catch(:halt) {
+        described_class.new.intercepting_failure(-> { called = true }) { :foo }
+      }
+
+      expect(called).to be(false)
+    end
+
+    it "throws :halt with the result when the block returns a failure" do
+      expect {
+        described_class.new.intercepting_failure(-> {}) { Failure(:foo) }
+      }.to throw_symbol(:halt, Failure(:foo))
+    end
+
+    it "calls the handler when the block returns a failure" do
+      called = false
+
+      catch(:halt) {
+        described_class.new.intercepting_failure(-> { called = true }) { Failure(:foo) }
+      }
+
+      expect(called).to be(true)
+    end
+  end
 end
