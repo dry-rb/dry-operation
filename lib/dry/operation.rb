@@ -92,6 +92,10 @@ module Dry
   #
   # The behavior configured by {ClassContext#operate_on} and {ClassContext#skip_prepending} is
   # inherited by subclasses.
+  #
+  # Some extensions are available under the `Dry::Operation::Extensions`
+  # namespace, providing additional functionality that can be included in your
+  # operation classes.
   class Operation
     def self.loader
       @loader ||= Zeitwerk::Loader.new.tap do |loader|
@@ -102,33 +106,70 @@ module Dry
         loader.ignore(
           "#{root}/dry/operation/errors.rb"
         )
+        loader.inflector.inflect("rom" => "ROM")
       end
     end
     loader.setup
+
+    FAILURE_TAG = :halt
+    private_constant :FAILURE_TAG
 
     extend ClassContext
     include Dry::Monads::Result::Mixin
 
     # Wraps block's return value in a {Dry::Monads::Result::Success}
     #
-    # Catches :halt and returns it
+    # Catches `:halt` and returns it
     #
     # @yieldreturn [Object]
     # @return [Dry::Monads::Result::Success]
     # @see #step
     def steps(&block)
-      catch(:halt) { Success(block.call) }
+      catching_failure { Success(block.call) }
     end
 
     # Unwraps a {Dry::Monads::Result::Success}
     #
-    # Throws :halt with a {Dry::Monads::Result::Failure} on failure.
+    # Throws `:halt` with a {Dry::Monads::Result::Failure} on failure.
     #
     # @param result [Dry::Monads::Result]
     # @return [Object] wrapped value
     # @see #steps
     def step(result)
-      result.value_or { throw :halt, result }
+      result.value_or { throw_failure(result) }
+    end
+
+    # Invokes a callable in case of block's failure
+    #
+    # Throws `:halt` with a {Dry::Monads::Result::Failure} on failure.
+    #
+    # This method is useful when you want to perform some side-effect when a
+    # failure is encountered. It's meant to be used within the {#steps} block
+    # commonly wrapping a sub-set of {#step} calls.
+    #
+    # @param handler [#call] a callable that will be called when a failure is encountered
+    # @yieldreturn [Object]
+    # @return [Object] the block's return value
+    def intercepting_failure(handler, &block)
+      output = catching_failure(&block)
+
+      case output
+      when Failure
+        handler.()
+        throw_failure(output)
+      else
+        output
+      end
+    end
+
+    private
+
+    def catching_failure(&block)
+      catch(FAILURE_TAG, &block)
+    end
+
+    def throw_failure(failure)
+      throw FAILURE_TAG, failure
     end
   end
 end

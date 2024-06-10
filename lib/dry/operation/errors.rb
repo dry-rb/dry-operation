@@ -22,5 +22,18 @@ module Dry
         MSG
       end
     end
+
+    # Missing dependency required by an extension
+    class MissingDependencyError < ::StandardError
+      def initialize(gem:, extension:)
+        super <<~MSG
+          To use the #{extension} extension, you first need to install the \
+          #{gem} gem. Please, add it to your Gemfile and run bundle install
+        MSG
+      end
+    end
+
+    # An error related to an extension
+    class ExtensionError < ::StandardError; end
   end
 end

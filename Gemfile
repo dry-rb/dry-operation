@@ -24,3 +24,8 @@ group :test do
   gem "rspec"
   gem "simplecov"
 end
+
+group :development, :test do
+  gem "rom-sql"
+  gem "sqlite3"
+end
