@@ -2,8 +2,10 @@
 
 module Dry
   class Operation
+    class Error < ::StandardError; end
+
     # Methods to prepend have already been defined
-    class MethodsToPrependAlreadyDefinedError < ::StandardError
+    class MethodsToPrependAlreadyDefinedError < Error
       def initialize(methods:)
         super <<~MSG
           '.operate_on' must be called before the given methods are defined.
@@ -13,7 +15,7 @@ module Dry
     end
 
     # Configuring prepending after a method has already been prepended
-    class PrependConfigurationError < ::StandardError
+    class PrependConfigurationError < Error
       def initialize(methods:)
         super <<~MSG
           '.operate_on' and '.skip_prepending' can't be called after any methods\
@@ -24,11 +26,20 @@ module Dry
     end
 
     # Missing dependency required by an extension
-    class MissingDependencyError < ::StandardError
+    class MissingDependencyError < Error
       def initialize(gem:, extension:)
         super <<~MSG
           To use the #{extension} extension, you first need to install the \
           #{gem} gem. Please, add it to your Gemfile and run bundle install
+        MSG
+      end
+    end
+
+    class InvalidStepResultError < Error
+      def initialize(result:)
+        super <<~MSG
+          Your step must return `Success(..)` or `Failure(..)`, \
+          from `Dry::Monads::Result`. Instead, it was `#{result.inspect}`.
         MSG
       end
     end

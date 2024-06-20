@@ -54,6 +54,30 @@ RSpec.describe Dry::Operation do
         described_class.new.step(failure)
       }.to throw_symbol(:halt, failure)
     end
+
+    it "raises helpful error when returning `nil` to step" do
+      expect {
+        described_class.new.step(nil)
+      }.to raise_error(Dry::Operation::InvalidStepResultError)
+        .with_message(
+          <<~MSG
+            Your step must return `Success(..)` or `Failure(..)`, \
+            from `Dry::Monads::Result`. Instead, it was `nil`.
+          MSG
+        )
+    end
+
+    it "raises helpful error when returning an integer to step" do
+      expect {
+        described_class.new.step(123)
+      }.to raise_error(Dry::Operation::InvalidStepResultError)
+        .with_message(
+          <<~MSG
+            Your step must return `Success(..)` or `Failure(..)`, \
+            from `Dry::Monads::Result`. Instead, it was `123`.
+          MSG
+        )
+    end
   end
 
   describe "#intercepting_failure" do

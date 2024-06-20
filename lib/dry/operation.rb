@@ -2,6 +2,7 @@
 
 require "zeitwerk"
 require "dry/monads"
+require "dry/operation/errors"
 
 module Dry
   # DSL for chaining operations that can fail
@@ -136,7 +137,11 @@ module Dry
     # @return [Object] wrapped value
     # @see #steps
     def step(result)
-      result.value_or { throw_failure(result) }
+      if result.is_a?(Dry::Monads::Result)
+        result.value_or { throw_failure(result) }
+      else
+        raise InvalidStepResultError.new(result: result)
+      end
     end
 
     # Invokes a callable in case of block's failure
