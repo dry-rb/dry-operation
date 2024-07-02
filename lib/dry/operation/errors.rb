@@ -39,7 +39,7 @@ module Dry
       def initialize(result:)
         super <<~MSG
           Your step must return `Success(..)` or `Failure(..)`, \
-          from `Dry::Monads::Result`. Instead, it was `#{result.inspect}`.
+          from `Dry::Operation::Result`. Instead, it was `#{result.inspect}`.
         MSG
       end
     end
