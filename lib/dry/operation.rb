@@ -26,19 +26,19 @@ module Dry
   #   end
   #
   #   def validate(input)
-  #    # Dry::Monads::Result::Success or Dry::Monads::Result::Failure
+  #    # Dry::Operation::Result::Success or Dry::Operation::Result::Failure
   #   end
   #
   #   def persist(attrs)
-  #    # Dry::Monads::Result::Success or Dry::Monads::Result::Failure
+  #    # Dry::Operation::Result::Success or Dry::Operation::Result::Failure
   #   end
   #
   #   def notify(user)
-  #    # Dry::Monads::Result::Success or Dry::Monads::Result::Failure
+  #    # Dry::Operation::Result::Success or Dry::Operation::Result::Failure
   #   end
   # end
   #
-  # include Dry::Monads[:result]
+  # include Dry::Operation::Result::Mixin
   #
   # case MyOperation.new.call(input)
   # in Success(user)
@@ -141,28 +141,31 @@ module Dry
     private_constant :FAILURE_TAG
 
     extend ClassContext
-    include Dry::Monads::Result::Mixin
 
-    # Wraps block's return value in a {Dry::Monads::Result::Success}
+    Result = Dry::Monads::Result
+    Result::Mixin = Dry::Monads::Result::Mixin
+    include Result::Mixin
+
+    # Wraps block's return value in a {Dry::Operation::Result::Success}
     #
     # Catches `:halt` and returns it
     #
     # @yieldreturn [Object]
-    # @return [Dry::Monads::Result::Success]
+    # @return [Dry::Operation::Result::Success]
     # @see #step
     def steps(&block)
       catching_failure { Success(block.call) }
     end
 
-    # Unwraps a {Dry::Monads::Result::Success}
+    # Unwraps a {Dry::Operation::Result::Success}
     #
-    # Throws `:halt` with a {Dry::Monads::Result::Failure} on failure.
+    # Throws `:halt` with a {Dry::Operation::Result::Failure} on failure.
     #
-    # @param result [Dry::Monads::Result]
+    # @param result [Dry::Operation::Result]
     # @return [Object] wrapped value
     # @see #steps
     def step(result)
-      if result.is_a?(Dry::Monads::Result)
+      if result.is_a?(Dry::Operation::Result)
         result.value_or { throw_failure(result) }
       else
         raise InvalidStepResultError.new(result: result)
@@ -171,7 +174,7 @@ module Dry
 
     # Invokes a callable in case of block's failure
     #
-    # Throws `:halt` with a {Dry::Monads::Result::Failure} on failure.
+    # Throws `:halt` with a {Dry::Operation::Result::Failure} on failure.
     #
     # This method is useful when you want to perform some side-effect when a
     # failure is encountered. It's meant to be used within the {#steps} block

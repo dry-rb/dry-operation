@@ -3,7 +3,7 @@
 require "spec_helper"
 
 RSpec.describe Dry::Operation do
-  include Dry::Monads[:result]
+  include Dry::Operation::Result::Mixin
 
   describe "#steps" do
     it "wraps block's return value in a Success" do
@@ -40,7 +40,7 @@ RSpec.describe Dry::Operation do
 
     # Make sure we don't use pattern matching to extract the value, as that
     # would be a problem with a value that is an array. See
-    # https://https://github.com/dry-rb/dry-monads/issues/173
+    # https://github.com/dry-rb/dry-monads/issues/173
     it "is able to extract an array from a success result" do
       expect(
         described_class.new.step(Success([:foo]))
@@ -62,7 +62,7 @@ RSpec.describe Dry::Operation do
         .with_message(
           <<~MSG
             Your step must return `Success(..)` or `Failure(..)`, \
-            from `Dry::Monads::Result`. Instead, it was `123`.
+            from `Dry::Operation::Result`. Instead, it was `123`.
           MSG
         )
     end
