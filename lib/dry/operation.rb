@@ -143,7 +143,6 @@ module Dry
     extend ClassContext
 
     Result = Dry::Monads::Result
-    Result::Mixin = Dry::Monads::Result::Mixin
     include Result::Mixin
 
     # Wraps block's return value in a {Dry::Operation::Result::Success}
