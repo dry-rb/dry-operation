@@ -26,6 +26,7 @@ group :test do
 end
 
 group :development, :test do
+  gem "activerecord"
   gem "rom-sql"
-  gem "sqlite3"
+  gem "sqlite3", "~> 1.4"
 end
