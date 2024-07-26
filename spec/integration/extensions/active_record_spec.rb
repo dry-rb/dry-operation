@@ -5,23 +5,33 @@ require "spec_helper"
 RSpec.describe Dry::Operation::Extensions::ActiveRecord do
   include Dry::Monads[:result]
 
-  let!(:model) do
-    Class.new(ActiveRecord::Base) do
-      self.table_name = :foo
-    end
-  end
-
   before :all do
     ActiveRecord::Base.establish_connection(adapter: "sqlite3", database: ":memory:")
     ActiveRecord::Schema.define do
-      create_table :foo do |t|
-        t.string :bar
+      ActiveRecord::Migration.suppress_messages do
+        create_table :x_ar_foo do |t|
+          t.string :bar
+        end
+      end
+    end
+  end
+
+  after :all do
+    ActiveRecord::Schema.define do
+      ActiveRecord::Migration.suppress_messages do
+        drop_table :x_ar_foo
       end
     end
   end
 
   after :each do
     model.delete_all
+  end
+
+  let(:model) do
+    Class.new(ActiveRecord::Base) do
+      self.table_name = :x_ar_foo
+    end
   end
 
   let(:base) do
@@ -32,6 +42,11 @@ RSpec.describe Dry::Operation::Extensions::ActiveRecord do
 
   it "rolls transaction back on failure" do
     instance = Class.new(base) do
+      def initialize(model)
+        @model = model
+        super()
+      end
+
       def call
         transaction do
           step create_record
@@ -40,13 +55,13 @@ RSpec.describe Dry::Operation::Extensions::ActiveRecord do
       end
 
       def create_record
-        Success(ActiveRecord::Base.descendants.first.create(bar: "bar"))
+        Success(@model.create(bar: "bar"))
       end
 
       def failure
         Failure(:failure)
       end
-    end.new
+    end.new(model)
 
     instance.()
     expect(model.count).to be(0)
@@ -54,6 +69,11 @@ RSpec.describe Dry::Operation::Extensions::ActiveRecord do
 
   it "acts transparently for the regular flow" do
     instance = Class.new(base) do
+      def initialize(model)
+        @model = model
+        super()
+      end
+
       def call
         transaction do
           step create_record
@@ -62,13 +82,13 @@ RSpec.describe Dry::Operation::Extensions::ActiveRecord do
       end
 
       def create_record
-        Success(ActiveRecord::Base.descendants.first.create(bar: "bar"))
+        Success(@model.create(bar: "bar"))
       end
 
       def count_records
-        Success(ActiveRecord::Base.descendants.first.count)
+        Success(@model.count)
       end
-    end.new
+    end.new(model)
 
     expect(
       instance.()
@@ -77,6 +97,11 @@ RSpec.describe Dry::Operation::Extensions::ActiveRecord do
 
   it "ensures new savepoints for nested transactions" do
     instance = Class.new(base) do
+      def initialize(model)
+        @model = model
+        super()
+      end
+
       def call
         transaction do
           step create_record
@@ -87,14 +112,14 @@ RSpec.describe Dry::Operation::Extensions::ActiveRecord do
       end
 
       def create_record
-        Success(ActiveRecord::Base.descendants.first.create(bar: "bar"))
+        Success(@model.create(bar: "bar"))
       end
 
       def failure
-        ActiveRecord::Base.descendants.first.create(bar: "bar")
+        @model.create(bar: "bar")
         Failure(:failure)
       end
-    end.new
+    end.new(model)
 
     instance.()
     expect(model.count).to be(1)

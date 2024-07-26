@@ -52,13 +52,13 @@ module Dry
       #
       # This is useful when you use multiple databases with ActiveRecord.
       #
-      # @see https://rom-rb.org
+      # @see https://api.rubyonrails.org/classes/ActiveRecord/Transactions/ClassMethods.html
       # @see https://guides.rubyonrails.org/active_record_multiple_databases.html
       module ActiveRecord
         DEFAULT_CONNECTION = ::ActiveRecord::Base
 
         # @!method transaction(connection = DEFAULT_CONNECTION, &steps)
-        #  Wrap the given steps in a ActiveRecord transaction.
+        #  Wrap the given steps in an ActiveRecord transaction.
         #
         #  If any of the steps returns a `Dry::Monads::Result::Failure`, the
         #  transaction will be rolled back and `:halt` will be thrown with the
