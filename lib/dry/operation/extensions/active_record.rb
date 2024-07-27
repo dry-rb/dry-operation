@@ -46,49 +46,69 @@ module Dry
       #
       # ```ruby
       # user = transaction(user) do
-      #  # ...
+      #   # ...
       # end
       # ```
       #
       # This is useful when you use multiple databases with ActiveRecord.
+      #
+      # The extension can be initiated with default options for the transaction.
+      # It will be applied to all transactions:
+      #
+      # ```ruby
+      # include Dry::Operation::Extensions::ActiveRecord[requires_new: true]
+      # ```
+      #
+      # You can override these options at runtime:
+      #
+      # ```ruby
+      # transaction(requires_new: false) do
+      #   # ...
+      # end
       #
       # @see https://api.rubyonrails.org/classes/ActiveRecord/Transactions/ClassMethods.html
       # @see https://guides.rubyonrails.org/active_record_multiple_databases.html
       module ActiveRecord
         DEFAULT_CONNECTION = ::ActiveRecord::Base
 
-        # @!method transaction(connection = DEFAULT_CONNECTION, &steps)
+        # @!method transaction(connection = DEFAULT_CONNECTION, **options, &steps)
         #  Wrap the given steps in an ActiveRecord transaction.
         #
         #  If any of the steps returns a `Dry::Monads::Result::Failure`, the
         #  transaction will be rolled back and `:halt` will be thrown with the
         #  failure as its value.
         #
+        #  @param connection [ActiveRecord::Base, #transaction] the class/object to use
+        #  @param options [Hash] additional options for the ActiveRecord transaction
         #  @yieldreturn [Object] the result of the block
         #  @see Dry::Operation#steps
+        #  @see https://api.rubyonrails.org/classes/ActiveRecord/ConnectionAdapters/DatabaseStatements.html#method-i-transaction
 
         def self.included(klass)
           klass.include(self[])
         end
 
         # Include the extension providing a custom class/object to initialize the transaction
+        # and default options.
         #
         # @param connection [ActiveRecord::Base, #transaction] the class/object to use
-        def self.[](connection = DEFAULT_CONNECTION)
-          Builder.new(connection)
+        # @param options [Hash] additional options for the ActiveRecord transaction
+        def self.[](connection = DEFAULT_CONNECTION, **options)
+          Builder.new(connection, **options)
         end
 
         # @api private
         class Builder < Module
-          def initialize(connection)
+          def initialize(connection, **options)
             super()
             @connection = connection
+            @options = options
           end
 
           def included(klass)
-            class_exec(@connection) do |default_connection|
-              klass.define_method(:transaction) do |connection = default_connection, &steps|
-                connection.transaction(requires_new: true) do
+            class_exec(@connection, @options) do |default_connection, default_options|
+              klass.define_method(:transaction) do |connection = default_connection, **options, &steps|
+                connection.transaction(**default_options.merge(options)) do
                   intercepting_failure(-> { raise ::ActiveRecord::Rollback }, &steps)
                 end
               end

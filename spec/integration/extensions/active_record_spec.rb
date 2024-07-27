@@ -90,12 +90,10 @@ RSpec.describe Dry::Operation::Extensions::ActiveRecord do
       end
     end.new(model)
 
-    expect(
-      instance.()
-    ).to eql(Success(1))
+    expect(instance.()).to eql(Success(1))
   end
 
-  it "ensures new savepoints for nested transactions" do
+  it "accepts options for ActiveRecord transaction method" do
     instance = Class.new(base) do
       def initialize(model)
         @model = model
@@ -105,7 +103,7 @@ RSpec.describe Dry::Operation::Extensions::ActiveRecord do
       def call
         transaction do
           step create_record
-          transaction do
+          transaction(requires_new: true) do
             step failure
           end
         end
