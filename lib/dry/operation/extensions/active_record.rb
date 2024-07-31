@@ -71,19 +71,6 @@ module Dry
       module ActiveRecord
         DEFAULT_CONNECTION = ::ActiveRecord::Base
 
-        # @!method transaction(connection = DEFAULT_CONNECTION, **options, &steps)
-        #  Wrap the given steps in an ActiveRecord transaction.
-        #
-        #  If any of the steps returns a `Dry::Monads::Result::Failure`, the
-        #  transaction will be rolled back and `:halt` will be thrown with the
-        #  failure as its value.
-        #
-        #  @param connection [ActiveRecord::Base, #transaction] the class/object to use
-        #  @param options [Hash] additional options for the ActiveRecord transaction
-        #  @yieldreturn [Object] the result of the block
-        #  @see Dry::Operation#steps
-        #  @see https://api.rubyonrails.org/classes/ActiveRecord/ConnectionAdapters/DatabaseStatements.html#method-i-transaction
-
         def self.included(klass)
           klass.include(self[])
         end
@@ -107,6 +94,18 @@ module Dry
 
           def included(klass)
             class_exec(@connection, @options) do |default_connection, options|
+              # @!method transaction(connection = ActiveRecord::Base, **options, &steps)
+              #   Wrap the given steps in an ActiveRecord transaction.
+              #
+              #   If any of the steps returns a `Dry::Monads::Result::Failure`, the
+              #   transaction will be rolled back and `:halt` will be thrown with the
+              #   failure as its value.
+              #
+              #   @param connection [#transaction] The class/object to use
+              #   @param options [Hash] Additional options for the ActiveRecord transaction
+              #   @yieldreturn [Object] the result of the block
+              #   @see Dry::Operation#steps
+              #   @see https://api.rubyonrails.org/classes/ActiveRecord/ConnectionAdapters/DatabaseStatements.html#method-i-transaction
               klass.define_method(:transaction) do |connection = default_connection, **opts, &steps|
                 connection.transaction(**options.merge(opts)) do
                   intercepting_failure(-> { raise ::ActiveRecord::Rollback }, &steps)
