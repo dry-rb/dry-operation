@@ -106,9 +106,9 @@ module Dry
           end
 
           def included(klass)
-            class_exec(@connection, @options) do |default_connection, default_options|
-              klass.define_method(:transaction) do |connection = default_connection, **options, &steps|
-                connection.transaction(**default_options.merge(options)) do
+            class_exec(@connection, @options) do |default_connection, options|
+              klass.define_method(:transaction) do |connection = default_connection, **opts, &steps|
+                connection.transaction(**options.merge(opts)) do
                   intercepting_failure(-> { raise ::ActiveRecord::Rollback }, &steps)
                 end
               end
