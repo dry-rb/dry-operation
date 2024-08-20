@@ -130,7 +130,8 @@ module Dry
         loader.tag = "dry-operation"
         loader.push_dir root
         loader.ignore(
-          "#{root}/dry/operation/errors.rb"
+          "#{root}/dry/operation/errors.rb",
+          "#{root}/dry/operation/extensions/*.rb"
         )
         loader.inflector.inflect("rom" => "ROM")
       end
