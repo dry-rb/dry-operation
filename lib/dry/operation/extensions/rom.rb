@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require "dry/operation/errors"
-
 begin
   require "rom-sql"
 rescue LoadError
