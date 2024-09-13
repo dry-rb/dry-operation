@@ -156,7 +156,7 @@ RSpec.describe Dry::Operation::Extensions::ActiveRecord do
       def call
         transaction do
           step create_record
-          transaction(requires_new: true) do
+          transaction(savepoint: true) do
             step failure
           end
         end
