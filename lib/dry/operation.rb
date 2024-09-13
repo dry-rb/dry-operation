@@ -3,6 +3,8 @@
 require "zeitwerk"
 require "dry/monads"
 require "dry/operation/errors"
+require "dry/operation/extensions/active_record"
+require "dry/operation/extensions/rom"
 
 module Dry
   # DSL for chaining operations that can fail
