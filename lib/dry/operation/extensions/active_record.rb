@@ -17,6 +17,8 @@ module Dry
       # back and, as usual, the rest of the flow will be skipped.
       #
       # ```ruby
+      # require "dry/operation/extensions/active_record"
+      #
       # class MyOperation < Dry::Operation
       #   include Dry::Operation::Extensions::ActiveRecord
       #
