@@ -13,6 +13,8 @@ end
 Bundler.require :tools
 
 require "dry/operation"
+require "dry/operation/extensions/active_record"
+require "dry/operation/extensions/rom"
 
 SPEC_ROOT = Pathname(__dir__).realpath.freeze
 

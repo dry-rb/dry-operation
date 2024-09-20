@@ -20,6 +20,8 @@ module Dry
       # container via a `#rom` method.
       #
       # ```ruby
+      # require "dry/operation/extensions/rom"
+      #
       # class MyOperation < Dry::Operation
       #   include Dry::Operation::Extensions::ROM
       #
