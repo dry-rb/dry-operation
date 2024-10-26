@@ -172,35 +172,36 @@ module Dry
 
     # Invokes a callable in case of block's failure
     #
-    # Throws `:halt` with a {Dry::Monads::Result::Failure} on failure.
-    #
     # This method is useful when you want to perform some side-effect when a
     # failure is encountered. It's meant to be used within the {#steps} block
     # commonly wrapping a sub-set of {#step} calls.
     #
-    # @param handler [#call] a callable that will be called when a failure is encountered
+    # @param handler [#call] a callable that will be called with the encountered failure
     # @yieldreturn [Object]
-    # @return [Object] the block's return value
+    # @return [Object] the block's return value when it's not a failure or the handler's
+    #   return value when the block returns a failure
     def intercepting_failure(handler, &block)
       output = catching_failure(&block)
 
       case output
       when Failure
-        handler.()
-        throw_failure(output)
+        handler.(output)
       else
         output
       end
+    end
+
+    # Throws `:halt` with a failure
+    #
+    # @param failure [Dry::Monads::Result::Failure]
+    def throw_failure(failure)
+      throw FAILURE_TAG, failure
     end
 
     private
 
     def catching_failure(&block)
       catch(FAILURE_TAG, &block)
-    end
-
-    def throw_failure(failure)
-      throw FAILURE_TAG, failure
     end
   end
 end

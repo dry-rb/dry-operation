@@ -68,6 +68,8 @@ module Dry
       #   # ...
       # end
       #
+      # WARNING: Be aware that the `:requires_new` option is not yet supported.
+      #
       # @see https://api.rubyonrails.org/classes/ActiveRecord/Transactions/ClassMethods.html
       # @see https://guides.rubyonrails.org/active_record_multiple_databases.html
       module ActiveRecord
@@ -109,8 +111,17 @@ module Dry
               #   @see Dry::Operation#steps
               #   @see https://api.rubyonrails.org/classes/ActiveRecord/ConnectionAdapters/DatabaseStatements.html#method-i-transaction
               klass.define_method(:transaction) do |connection = default_connection, **opts, &steps|
-                connection.transaction(**options.merge(opts)) do
-                  intercepting_failure(-> { raise ::ActiveRecord::Rollback }, &steps)
+                intercepting_failure(method(:throw_failure)) do
+                  result = nil
+                  connection.transaction(**options.merge(opts)) do
+                    intercepting_failure(->(failure) {
+                                           result = failure
+                                           raise ::ActiveRecord::Rollback
+                                         }) do
+                      result = steps.()
+                    end
+                  end
+                  result
                 end
               end
             end

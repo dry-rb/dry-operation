@@ -103,10 +103,17 @@ module Dry
                   that returns the ROM container
                 MSG
 
-                rom.gateways[gateway].transaction do |t|
-                  intercepting_failure(-> { raise t.rollback! }) do
-                    steps.()
+                intercepting_failure(method(:throw_failure)) do
+                  result = nil
+                  rom.gateways[gateway].transaction do |t|
+                    intercepting_failure(->(failure) {
+                                           result = failure
+                                           t.rollback!
+                                         }) do
+                      result = steps.()
+                    end
                   end
+                  result
                 end
               end
             end
