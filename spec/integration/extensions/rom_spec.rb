@@ -51,7 +51,7 @@ RSpec.describe Dry::Operation::Extensions::ROM do
     expect(rom.relations[:foo].count).to be(0)
   end
 
-  it "acts transparently for the regular flow" do
+  it "acts transparently for the regular flow for a success" do
     instance = Class.new(base) do
       def call
         transaction do
@@ -72,5 +72,28 @@ RSpec.describe Dry::Operation::Extensions::ROM do
     expect(
       instance.()
     ).to eql(Success(1))
+  end
+
+  it "acts transparently for the regular flow for a failure" do
+    instance = Class.new(base) do
+      def call
+        transaction do
+          step create_record
+          step count_records
+        end
+      end
+
+      def create_record
+        Success(rom.relations[:foo].command(:create).(bar: "bar"))
+      end
+
+      def count_records
+        Failure(:failure)
+      end
+    end.new(rom: rom)
+
+    expect(
+      instance.()
+    ).to eql(Failure(:failure))
   end
 end

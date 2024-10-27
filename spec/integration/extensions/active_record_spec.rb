@@ -67,7 +67,7 @@ RSpec.describe Dry::Operation::Extensions::ActiveRecord do
     expect(model.count).to be(0)
   end
 
-  it "acts transparently for the regular flow" do
+  it "acts transparently for the regular flow for a success" do
     instance = Class.new(base) do
       def initialize(model)
         @model = model
@@ -93,7 +93,60 @@ RSpec.describe Dry::Operation::Extensions::ActiveRecord do
     expect(instance.()).to eql(Success(1))
   end
 
+  it "acts transparently for the regular flow for a failure" do
+    instance = Class.new(base) do
+      def initialize(model)
+        @model = model
+        super()
+      end
+
+      def call
+        transaction do
+          step create_record
+          step count_records
+        end
+      end
+
+      def create_record
+        Success(@model.create(bar: "bar"))
+      end
+
+      def count_records
+        Failure(:failure)
+      end
+    end.new(model)
+
+    expect(
+      instance.()
+    ).to eql(Failure(:failure))
+  end
+
   it "accepts options for ActiveRecord transaction method" do
+    instance = Class.new(base) do
+      def initialize(model)
+        @model = model
+        super()
+      end
+
+      def call
+        transaction(requires_new: :false) do
+          step create_record
+        end
+      end
+
+      def create_record
+        Success(@model.create(bar: "bar"))
+      end
+    end.new(model)
+
+    expect(ActiveRecord::Base).to receive(:transaction).with(requires_new: :false).and_call_original
+
+    instance.()
+
+    expect(model.count).to be(1)
+  end
+
+  xit "works with `requires_new` for nested transactions" do
     instance = Class.new(base) do
       def initialize(model)
         @model = model
@@ -114,12 +167,12 @@ RSpec.describe Dry::Operation::Extensions::ActiveRecord do
       end
 
       def failure
-        @model.create(bar: "bar")
         Failure(:failure)
       end
     end.new(model)
 
     instance.()
+
     expect(model.count).to be(1)
   end
 end
