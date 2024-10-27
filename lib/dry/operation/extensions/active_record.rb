@@ -111,7 +111,7 @@ module Dry
               #   @see Dry::Operation#steps
               #   @see https://api.rubyonrails.org/classes/ActiveRecord/ConnectionAdapters/DatabaseStatements.html#method-i-transaction
               klass.define_method(:transaction) do |connection = default_connection, **opts, &steps|
-                intercepting_failure(method(:throw_failure)) do
+                intercepting_failure do
                   result = nil
                   connection.transaction(**options.merge(opts)) do
                     intercepting_failure(->(failure) {

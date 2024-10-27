@@ -176,11 +176,12 @@ module Dry
     # failure is encountered. It's meant to be used within the {#steps} block
     # commonly wrapping a sub-set of {#step} calls.
     #
-    # @param handler [#call] a callable that will be called with the encountered failure
+    # @param handler [#call] a callable that will be called with the encountered failure.
+    #   By default, it throws `FAILURE_TAG` with the failure.
     # @yieldreturn [Object]
     # @return [Object] the block's return value when it's not a failure or the handler's
     #   return value when the block returns a failure
-    def intercepting_failure(handler, &block)
+    def intercepting_failure(handler = method(:throw_failure), &block)
       output = catching_failure(&block)
 
       case output
