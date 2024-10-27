@@ -115,12 +115,12 @@ RSpec.describe Dry::Operation::Extensions::Sequel do
     instance.()
   end
 
-  xit "works with `requires_new` for nested transactions" do
+  xit "works with `savepoint` for nested transactions" do
     instance = Class.new(base) do
       def call
         transaction do
           step create_user
-          transaction(requires_new: true) do
+          transaction(savepoint: true) do
             step failure
           end
         end
