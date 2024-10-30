@@ -10,7 +10,7 @@ sections:
   - design-pattern
 ---
 
-dry-operation is a lightweight DSL that wraps around [dry-monads](/gems/dry-monads/), allowing you to chain operations with a focus on the happy path while elegantly handling failures.
+dry-operation provides an expressive and flexible way for you to model your app's business operations. It provides a lightweight DSL around [dry-monads](/gems/dry-monads/), which allows you to chain together steps and operations with a focus on the happy path, while elegantly handling failures.
 
 ### Introduction
 
