@@ -9,15 +9,16 @@ sections:
   - extensions
   - design-pattern
 ---
-`dry-operation` is a lightweight DSL that wraps around [`dry-monads`](/gems/dry-monads/), allowing you to chain operations with a focus on the happy path while elegantly handling failures.
+
+dry-operation is a lightweight DSL that wraps around [dry-monads](/gems/dry-monads/), allowing you to chain operations with a focus on the happy path while elegantly handling failures.
 
 ### Introduction
 
-In complex business logic, it's common to have a series of operations that depend on each other. Traditionally, this leads to deeply nested conditional statements or a series of guard clauses. `dry-operation` provides a more elegant solution by allowing you to define a linear flow of operations, automatically short-circuiting on failure.
+In complex business logic, it's common to have a series of operations that depend on each other. Traditionally, this leads to deeply nested conditional statements or a series of guard clauses. dry-operation provides a more elegant solution by allowing you to define a linear flow of operations, automatically short-circuiting on failure.
 
 ### Basic Usage
 
-To use `dry-operation`, create a class that inherits from `Dry::Operation` and define your flow in the `#call` method:
+To use dry-operation, create a class that inherits from `Dry::Operation` and define your flow in the `#call` method:
 
 ```ruby
 class CreateUser < Dry::Operation
@@ -44,7 +45,7 @@ class CreateUser < Dry::Operation
 end
 ```
 
-In this example, each step (`validate`, `persist`, `notify`) is expected to return either a `Success` or `Failure` from [`dry-monads`](/gems/dry-monads/).
+In this example, each step (`validate`, `persist`, `notify`) is expected to return either a `Success` or `Failure` from [dry-monads](/gems/dry-monads/).
 
 ### The step method
 
@@ -52,7 +53,7 @@ The step method is the core of `Dry::Operation`. It does two main things:
 
 - If the result is a `Success`, it unwraps the value and returns it.
 
-- If the result is a `Failure`, it halts the execution throwing the failure up the call stack.    
+- If the result is a `Failure`, it halts the execution throwing the failure up the call stack.
 
 This behavior allows you to write your happy path in a linear fashion, without worrying about handling failures at each step.
 
