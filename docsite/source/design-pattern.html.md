@@ -22,7 +22,7 @@ This behavior allows for clean composition of operations while handling potentia
 
 ### Railway Oriented Programming
 
-The design of dry-operation closely follows the concept of Railway Oriented Programming, a way of structuring code that's especially useful for dealing with a series of operations that may fail.
+The design of dry-operation closely follows the concept of [Railway Oriented Programming](https://fsharpforfunandprofit.com/rop/), a way of structuring code that's especially useful for dealing with a series of operations that may fail.
 
 In this model:
 
