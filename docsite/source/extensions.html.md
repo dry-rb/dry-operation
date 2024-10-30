@@ -6,18 +6,18 @@ name: dry-operation
 
 ### ROM
 
-The `ROM` extension adds transaction support to your operations when working with [`rom-rb.org`](https://rom-rb.org). When a step returns a `Failure`, the transaction will automatically roll back, ensuring data consistency.
+The `ROM` extension adds transaction support to your operations when working with the [ROM](https://rom-rb.org) database persistence toolkit. When a step returns a `Failure`, the transaction will automatically roll back, ensuring data consistency.
 
-First, make sure you have `rom-sql` installed:
+First, make sure you have rom-sql installed:
 
 ```ruby
-gem 'rom-sql'
+gem "rom-sql"
 ```
 
 Require and include the extension in your operation class and provide access to the ROM container through a `#rom` method:
 
 ```ruby
-require 'dry/operation/extensions/rom'
+require "dry/operation/extensions/rom"
 
 class CreateUser < Dry::Operation
   include Dry::Operation::Extensions::ROM
@@ -38,7 +38,6 @@ class CreateUser < Dry::Operation
   end
 
   # ...
-
 end
 ```
 
@@ -58,18 +57,18 @@ end
 
 ### Sequel
 
-The `Sequel` extension provides transaction support for operations using [`sequel` databases](http://sequel.jeremyevans.net). It will automatically roll back the transaction if any step returns a `Failure`.
+The `Sequel` extension provides transaction support for operations when using the [Sequel](http://sequel.jeremyevans.net) database toolkit. It will automatically roll back the transaction if any step returns a `Failure`.
 
 Make sure you have sequel installed:
 
 ```ruby
-gem 'sequel'
+gem "sequel"
 ```
 
 Require and include the extension in your operation class and provide access to the Sequel database object through a `#db` method:
 
 ```ruby
-require 'dry/operation/extensions/sequel'
+require "dry/operation/extensions/sequel"
 
 class CreateUser < Dry::Operation
   include Dry::Operation::Extensions::Sequel
@@ -90,7 +89,6 @@ class CreateUser < Dry::Operation
   end
 
   # ...
-
 end
 ```
 
@@ -112,18 +110,18 @@ end
 
 ### ActiveRecord
 
-The `ActiveRecord` extension adds transaction support for operations using [`activerecord`](https://api.rubyonrails.org/classes/ActiveRecord). Like the other database extensions, it will roll back the transaction if any step returns a `Failure`.
+The `ActiveRecord` extension adds transaction support for operations using the [ActiveRecord](https://api.rubyonrails.org/classes/ActiveRecord) ORM. Like the other database extensions, it will roll back the transaction if any step returns a `Failure`.
 
 Make sure you have activerecord installed:
 
 ```ruby
-gem 'activerecord'
+gem "activerecord"
 ```
 
 Require and include the extension in your operation class:
 
 ```ruby
-require 'dry/operation/extensions/active_record'
+require "dry/operation/extensions/active_record"
 
 class CreateUser < Dry::Operation
   include Dry::Operation::Extensions::ActiveRecord
@@ -137,7 +135,6 @@ class CreateUser < Dry::Operation
   end
 
   # ...
-
 end
 ```
 
@@ -155,7 +152,7 @@ transaction(User) do
 end
 ```
 
-This is particularly useful when working with multiple databases in `ActiveRecord`.
+This is particularly useful when working with multiple databases in ActiveRecord.
 
 You can also provide default transaction options when including the extension:
 
