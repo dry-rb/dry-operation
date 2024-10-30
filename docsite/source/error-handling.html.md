@@ -25,6 +25,8 @@ class CreateUser < Dry::Operation
     user
   end
 
+  private
+
   def on_failure(failure)
     # Log or handle the failure globally
     logger.error("Operation failed: #{failure}")
@@ -46,6 +48,8 @@ class CreateUser < Dry::Operation
     step notify(user)
     user
   end
+
+  private
 
   def on_failure(failure, step_name)
     case step_name
