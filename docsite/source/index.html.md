@@ -45,11 +45,11 @@ class CreateUser < Dry::Operation
 end
 ```
 
-In this example, each step (`validate`, `persist`, `notify`) is expected to return either a `Success` or `Failure` from [dry-monads](/gems/dry-monads/).
+Each step (`validate`, `persist`, `notify`) is expected to return either a `Success` or `Failure` from [dry-monads](/gems/dry-monads/).
 
 ### The step method
 
-The step method is the core of `Dry::Operation`. It does two main things:
+The `#step` method is the core of `Dry::Operation`. It does two main things:
 
 - If the result is a `Success`, it unwraps the value and returns it.
 - If the result is a `Failure`, it halts the execution throwing the failure up the call stack.
@@ -79,7 +79,7 @@ When all steps succeed, calling this operation will return `Success(user)`, not 
 
 ### Handling Results
 
-After calling an operation, you get back either a `Success` or a `Failure`. You can pattern match on this result to handle each situation:
+After calling an operation, you will receive either a `Success` or a `Failure`. You can pattern match on this result to handle each situation:
 
 ```ruby
 case CreateUser.new.(input)

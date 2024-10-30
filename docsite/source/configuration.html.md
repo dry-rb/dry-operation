@@ -4,12 +4,12 @@ layout: gem-single
 name: dry-operation
 ---
 
-By default, dry-operation automatically wraps the `#call` method of your operations with failure tracking and error handling (the `#on_failure` hook). This means you can use `#step` directly in your `#call` method without explicitly wrapping it in an otherwise necessary `steps do ... end` block.
+By default, dry-operation automatically wraps the `#call` method of your operations with failure tracking and [error handling](docs::error-handling). This is what allows you to use `#step` directly in your `#call` method. Without this, it would be necessary to wrap all steps in a `steps do ... end` block.
 
 ```ruby
 class CreateUser < Dry::Operation
   def call(input)
-    # This works automatically
+    # Step handling works in #call by default
     user = step create_user(input)
     step notify(user)
     user
@@ -19,11 +19,11 @@ end
 
 ### Customizing wrapped methods
 
-You can customize which methods get automatically wrapped using the `.operate_on` class method:
+You can customize which methods can handled steps using the `.operate_on` class method:
 
 ```ruby
 class MyOperation < Dry::Operation
-  # Wrap both #call and #process methods
+  # Handle steps in both #call and #process methods
   operate_on :call, :process
 
   def call(input)
@@ -61,4 +61,4 @@ Both `.operate_on` and `.skip_prepending` configurations are inherited by subcla
 
 - If a parent class configures certain methods to be wrapped, subclasses will inherit that configuration
 - If a parent class skips prepending, subclasses will also skip prepending
-- Subclasses can override their parent's configuration by calling `.operate_on` or `.skip_prepending`
+- Subclasses can override their parent's configuration by calling `.operate_on` or `.skip_prepending` again
