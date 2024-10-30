@@ -52,7 +52,6 @@ In this example, each step (`validate`, `persist`, `notify`) is expected to retu
 The step method is the core of `Dry::Operation`. It does two main things:
 
 - If the result is a `Success`, it unwraps the value and returns it.
-
 - If the result is a `Failure`, it halts the execution throwing the failure up the call stack.
 
 This behavior allows you to write your happy path in a linear fashion, without worrying about handling failures at each step.

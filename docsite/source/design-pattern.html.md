@@ -29,7 +29,6 @@ The design of dry-operation closely follows the concept of Railway-oriented Prog
 In this model:
 
 - The "happy path" (all operations succeed) is one track of the railway.
-
 - The "failure path" (any operation fails) is another track.
 
 Each step is like a switch on the railway, potentially diverting from the success track to the failure track.

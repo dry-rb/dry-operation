@@ -60,7 +60,5 @@ end
 Both `.operate_on` and `.skip_prepending` configurations are inherited by subclasses. This means:
 
 - If a parent class configures certain methods to be wrapped, subclasses will inherit that configuration
-
 - If a parent class skips prepending, subclasses will also skip prepending
-
 - Subclasses can override their parent's configuration by calling `.operate_on` or `.skip_prepending`
