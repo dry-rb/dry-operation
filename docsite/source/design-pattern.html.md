@@ -15,9 +15,7 @@ dry-operation emulates this monadic behavior through its `#step` method and the 
 In monadic terms, the `#step` method in `Dry::Operation` acts similarly to the `bind` operation:
 
 1. It takes a computation that may succeed or fail (returning `Success` or `Failure`).
-
 1. If the computation succeeds, it extracts the value and passes it to the next step.
-
 1. If the computation fails, it short-circuits the entire operation, skipping subsequent steps.
 
 This behavior allows for clean composition of operations while handling potential failures at each step.
