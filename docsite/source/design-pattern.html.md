@@ -20,6 +20,8 @@ In monadic terms, the `#step` method in `Dry::Operation` acts similarly to the `
 
 This behavior allows for clean composition of operations while handling potential failures at each step.
 
+By expressing this behaviour via `#step`, dry-operation lets you intermingle ordinary Ruby code in between steps as required.
+
 ### Railway Oriented Programming
 
 The design of dry-operation closely follows the concept of [Railway Oriented Programming](https://fsharpforfunandprofit.com/rop/), a way of structuring code that's especially useful for dealing with a series of operations that may fail.
