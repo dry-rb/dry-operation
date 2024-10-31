@@ -77,6 +77,22 @@ end
 
 When all steps succeed, calling this operation will return `Success(user)`, not just `user`.
 
+It's important to notice that steps don't need to immediately follow each other. You can add your own regular Ruby code between the steps to adjust values as required. For instance, the following works just fine:
+
+```ruby
+class CreateUser < Dry::Operation
+  def call(input)
+    attrs = step validate(input)
+    attrs[:name] = attrs[:name].capitalize
+    user = step persist(attrs)
+    step notify(user)
+    user  # This is automatically wrapped in Success
+  end
+
+  # ... other methods ...
+end
+```
+
 ### Handling Results
 
 After calling an operation, you will receive either a `Success` or a `Failure`. You can pattern match on this result to handle each situation:
