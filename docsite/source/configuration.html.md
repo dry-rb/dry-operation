@@ -4,7 +4,7 @@ layout: gem-single
 name: dry-operation
 ---
 
-By default, dry-operation automatically wraps the `#call` method of your operations with failure tracking and [error handling](docs::error-handling). This is what allows you to use `#step` directly in your `#call` method. Without this, it would be necessary to wrap all steps in a `steps do ... end` block.
+By default, dry-operation automatically wraps the `#call` method of your operations with failure tracking and [error handling](docs::error-handling). This is what allows you to use `#step` directly in your `#call` method.
 
 ```ruby
 class CreateUser < Dry::Operation
