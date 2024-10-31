@@ -95,3 +95,5 @@ end
 ```
 
 This pattern matching allows you to handle different types of failures in a clear and explicit manner.
+
+You can read more about dry-monads' `Result` usage in the [dry-monads documentation](/gems/dry-monads/1.6/result/).
