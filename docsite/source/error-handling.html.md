@@ -10,7 +10,7 @@ You'll usually handle the failure from the call site, where you can pattern matc
 
 ### Global error handling
 
-You can define a global failure handler by implementing an `#on_failure` method in your operation class:
+You can define a global failure handler by implementing an `#on_failure` method in your operation class. This method is only called to perform desired side effects and it won't affect the operation's return value.
 
 ```ruby
 class CreateUser < Dry::Operation
