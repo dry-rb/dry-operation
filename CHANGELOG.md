@@ -22,4 +22,4 @@ Model your app’s business operations.
 
 - Initial release (@waiting-for-dev)
 
-[v1.0.0]: https://github.com/dry-rb/dry-operation/releases/tag/v1.0.0
+[1.0.0]: https://github.com/dry-rb/dry-operation/releases/tag/v1.0.0
