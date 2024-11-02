@@ -1,5 +1,25 @@
-# Versions
+# dry-operation
 
-## 0.0.0 (?)
+Model your app’s business operations.
 
-* Pending...
+## [Unreleased]
+
+### Added
+
+### Changed
+
+### Deprecated
+
+### Removed
+
+### Fixed
+
+### Security
+
+## [1.0.0] - 2024-11-02
+
+### Added
+
+- Initial release (@waiting-for-dev)
+
+[v1.0.0]: https://github.com/dry-rb/dry-operation/releases/tag/v1.0.0
