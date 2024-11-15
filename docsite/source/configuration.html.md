@@ -19,7 +19,7 @@ end
 
 ### Customizing wrapped methods
 
-You can customize which methods can handled steps using the `.operate_on` class method:
+You can customize which methods can handle steps using the `.operate_on` class method:
 
 ```ruby
 class MyOperation < Dry::Operation
