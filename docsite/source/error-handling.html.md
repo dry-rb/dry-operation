@@ -34,7 +34,7 @@ class CreateUser < Dry::Operation
 end
 ```
 
-The `#on_failure` method can optionally accept a second argument that indicates which method encountered the failure, allowing you more granular control over error handling:
+The `#on_failure` method can optionally accept a second argument that indicates which method encountered the failure. This is helpful if you're defining more than an operation in a class:
 
 ```ruby
 class CreateUser < Dry::Operation
@@ -52,14 +52,7 @@ class CreateUser < Dry::Operation
   private
 
   def on_failure(failure, step_name)
-    case step_name
-    when :validate
-      logger.error("Validation failed: #{failure}")
-    when :persist
-      logger.error("Persistence failed: #{failure}")
-    when :notify
-      logger.error("Notification failed: #{failure}")
-    end
+    # step_name is going to be `:call` here
   end
 end
 ```
