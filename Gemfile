@@ -2,6 +2,8 @@
 
 source "https://rubygems.org"
 
+eval_gemfile "Gemfile.devtools"
+
 gemspec
 
 group :tools do
@@ -14,15 +16,8 @@ group :docs do
   gem "yard-junk"
 end
 
-group :development do
-  gem "rake"
-  gem "rubocop"
-end
-
 group :test do
   gem "guard-rspec"
-  gem "rspec"
-  gem "simplecov"
 end
 
 group :development, :test do

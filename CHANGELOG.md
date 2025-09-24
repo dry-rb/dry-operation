@@ -1,6 +1,9 @@
-# dry-operation
+# Changelog
 
-Model your app’s business operations.
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Break Versioning](https://www.taoensso.com/break-versioning).
 
 ## [Unreleased]
 
@@ -21,5 +24,3 @@ Model your app’s business operations.
 ### Added
 
 - Initial release (@waiting-for-dev)
-
-[1.0.0]: https://github.com/dry-rb/dry-operation/releases/tag/v1.0.0

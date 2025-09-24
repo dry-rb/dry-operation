@@ -1,14 +1,7 @@
 # frozen_string_literal: true
 
-require "simplecov"
-
-unless ENV["NO_COVERAGE"]
-  SimpleCov.start do
-    add_filter %r{^/spec/}
-    enable_coverage :branch
-    enable_coverage_for_eval
-  end
-end
+require_relative "support/coverage"
+require_relative "support/warnings"
 
 Bundler.require :tools
 
@@ -19,15 +12,12 @@ require "dry/operation/extensions/sequel"
 
 SPEC_ROOT = Pathname(__dir__).realpath.freeze
 
+Dir.glob(SPEC_ROOT / "support" / "**" / "*.rb").each { |f| require f }
+
 RSpec.configure do |config|
-  config.color = true
-  config.disable_monkey_patching!
   config.example_status_persistence_file_path = "./tmp/rspec-examples.txt"
-  config.filter_run_when_matching :focus
   config.formatter = :progress
-  config.order = :random
   config.shared_context_metadata_behavior = :apply_to_host_groups
-  config.warnings = true
 
   config.expect_with :rspec do |expectations|
     expectations.syntax = :expect
