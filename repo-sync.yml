@@ -10,7 +10,6 @@ gemspec:
   required_ruby_version: ">= 3.1.0"
   development_dependencies:
     - bundler
-    - rake
     - rspec
     - yard
   runtime_dependencies:
