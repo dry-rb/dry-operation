@@ -117,9 +117,9 @@ module Dry
                 result = nil
                 connection.transaction(**default_options.merge(opts)) do
                   intercepting_failure(->(failure) {
-                                          result = failure
-                                          raise ::ActiveRecord::Rollback
-                                        }) do
+                    result = failure
+                    raise ::ActiveRecord::Rollback
+                  }) do
                     result = steps.()
                   end
                 end
