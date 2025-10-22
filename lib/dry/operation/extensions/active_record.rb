@@ -96,33 +96,34 @@ module Dry
             @options = options
           end
 
-          def included(klass)
-            class_exec(@connection, @options) do |default_connection, options|
-              # @!method transaction(connection = ActiveRecord::Base, **options, &steps)
-              #   Wrap the given steps in an ActiveRecord transaction.
-              #
-              #   If any of the steps returns a `Dry::Monads::Result::Failure`, the
-              #   transaction will be rolled back and `:halt` will be thrown with the
-              #   failure as its value.
-              #
-              #   @param connection [#transaction] The class/object to use
-              #   @param options [Hash] Additional options for the ActiveRecord transaction
-              #   @yieldreturn [Object] the result of the block
-              #   @see Dry::Operation#steps
-              #   @see https://api.rubyonrails.org/classes/ActiveRecord/ConnectionAdapters/DatabaseStatements.html#method-i-transaction
-              klass.define_method(:transaction) do |connection = default_connection, **opts, &steps|
-                intercepting_failure do
-                  result = nil
-                  connection.transaction(**options.merge(opts)) do
-                    intercepting_failure(->(failure) {
-                                           result = failure
-                                           raise ::ActiveRecord::Rollback
-                                         }) do
-                      result = steps.()
-                    end
+          def included(_klass)
+            default_connection = @connection
+            default_options = @options
+
+            # @!method transaction(connection = ActiveRecord::Base, **options, &steps)
+            #   Wrap the given steps in an ActiveRecord transaction.
+            #
+            #   If any of the steps returns a `Dry::Monads::Result::Failure`, the
+            #   transaction will be rolled back and `:halt` will be thrown with the
+            #   failure as its value.
+            #
+            #   @param connection [#transaction] The class/object to use
+            #   @param options [Hash] Additional options for the ActiveRecord transaction
+            #   @yieldreturn [Object] the result of the block
+            #   @see Dry::Operation#steps
+            #   @see https://api.rubyonrails.org/classes/ActiveRecord/ConnectionAdapters/DatabaseStatements.html#method-i-transaction
+            define_method(:transaction) do |connection = default_connection, **opts, &steps|
+              intercepting_failure do
+                result = nil
+                connection.transaction(**default_options.merge(opts)) do
+                  intercepting_failure(->(failure) {
+                                          result = failure
+                                          raise ::ActiveRecord::Rollback
+                                        }) do
+                    result = steps.()
                   end
-                  result
                 end
+                result
               end
             end
           end
