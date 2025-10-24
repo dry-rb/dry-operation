@@ -81,26 +81,26 @@ module Dry
             @options = options
           end
 
-          def included(klass)
-            class_exec(@options) do |default_options|
-              klass.define_method(:transaction) do |**opts, &steps|
-                raise Dry::Operation::ExtensionError, <<~MSG unless respond_to?(:db)
-                  When using the Sequel extension, you need to define a #db method \
-                  that returns the Sequel database object
-                MSG
+          def included(_klass)
+            default_options = @options
 
-                intercepting_failure do
-                  result = nil
-                  db.transaction(**default_options.merge(opts)) do
-                    intercepting_failure(->(failure) {
-                      result = failure
-                      raise ::Sequel::Rollback
-                    }) do
-                      result = steps.()
-                    end
+            define_method(:transaction) do |**opts, &steps|
+              raise Dry::Operation::ExtensionError, <<~MSG unless respond_to?(:db)
+                When using the Sequel extension, you need to define a #db method \
+                that returns the Sequel database object
+              MSG
+
+              intercepting_failure do
+                result = nil
+                db.transaction(**default_options.merge(opts)) do
+                  intercepting_failure(->(failure) {
+                    result = failure
+                    raise ::Sequel::Rollback
+                  }) do
+                    result = steps.()
                   end
-                  result
                 end
+                result
               end
             end
           end
