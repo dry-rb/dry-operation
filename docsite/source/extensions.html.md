@@ -172,3 +172,142 @@ end
 ```
 
 ⚠️  Warning: The `:requires_new` option for nested transactions is not yet fully supported.
+
+### Params
+
+The `Params` extension adds input validation support to your operations using [dry-validation](https://dry-rb.org/gems/dry-validation/). When an operation is called, the input will be automatically validated against the defined rules before the operation logic executes. If validation fails, the operation returns a `Failure` with detailed error information without executing the operation body.
+
+Make sure you have dry-validation installed:
+
+```ruby
+gem "dry-validation"
+```
+
+Require and include the extension in your operation class, then define validation rules using the `params` class method:
+
+```ruby
+require "dry/operation/extensions/params"
+
+class CreateUser < Dry::Operation
+  include Dry::Operation::Extensions::Params
+
+  params do
+    required(:name).filled(:string)
+    required(:email).filled(:string)
+    optional(:age).maybe(:integer)
+  end
+
+  def call(input)
+    user = step create_user(input)
+    step notify(user)
+    user
+  end
+
+  # ...
+end
+```
+
+When validation succeeds, the operation receives the validated and coerced input:
+
+```ruby
+result = CreateUser.new.call(name: "Alice", email: "alice@example.com", age: "25")
+# => Success(user) with age coerced to integer 25
+```
+
+When validation fails, the operation returns a `Failure` tagged with `:invalid_params` and the validation errors, without executing any of the operation's steps:
+
+```ruby
+result = CreateUser.new.call(name: "", email: "invalid")
+# => Failure[:invalid_params, {name: ["must be filled"]}]
+```
+
+#### Using params classes
+
+You can also pass a pre-defined params class to `params` instead of a block, which is useful for reusing validation rules across multiple operations:
+
+```ruby
+class UserParams < Dry::Operation::Extensions::Params::Params
+  params do
+    required(:name).filled(:string)
+    required(:email).filled(:string)
+    optional(:age).maybe(:integer)
+  end
+end
+
+class CreateUser < Dry::Operation
+  include Dry::Operation::Extensions::Params
+
+  params UserParams
+
+  def call(input)
+    user = step create_user(input)
+    step notify(user)
+    user
+  end
+
+  # ...
+end
+
+class UpdateUser < Dry::Operation
+  include Dry::Operation::Extensions::Params
+
+  params UserParams
+
+  def call(input)
+    # ...
+  end
+end
+```
+
+#### Using contract for custom validation rules
+
+For more complex validation scenarios, use the `contract` method which provides access to the full dry-validation contract API, including custom rules:
+
+```ruby
+class CreateUser < Dry::Operation
+  include Dry::Operation::Extensions::Params
+
+  contract do
+    params do
+      required(:name).filled(:string)
+      required(:age).filled(:integer)
+    end
+
+    rule(:age) do
+      key.failure("must be 18 or older") if value < 18
+    end
+  end
+
+  def call(input)
+    # ...
+  end
+end
+```
+
+#### Custom wrapped methods
+
+The `params` extension works seamlessly with custom wrapped methods when using `.operate_on`:
+
+```ruby
+class ProcessData < Dry::Operation
+  include Dry::Operation::Extensions::Params
+
+  operate_on :process, :transform
+
+  params do
+    required(:value).filled(:string)
+  end
+
+  def process(input)
+    input[:value].upcase
+  end
+
+  def transform(input)
+    input[:value].downcase
+  end
+end
+```
+
+#### Inheritance
+
+Params classes are inherited by subclasses, allowing you to build operation hierarchies with shared validation rules.
