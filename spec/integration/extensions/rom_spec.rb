@@ -6,7 +6,7 @@ RSpec.describe Dry::Operation::Extensions::ROM do
   include Dry::Monads[:result]
 
   let(:rom) do
-    ROM.container(:sql, "sqlite:memory") do |config|
+    ROM.container(:sql, "sqlite:file::memory:?cache=private") do |config|
       config.default.create_table(:foo) do
         column :bar, :string
       end
