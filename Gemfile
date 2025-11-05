@@ -22,6 +22,7 @@ end
 
 group :development, :test do
   gem "activerecord"
+  gem "dry-validation"
   gem "rom-sql"
   gem "sequel"
   gem "sqlite3"
