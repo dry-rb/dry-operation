@@ -6,7 +6,14 @@ RSpec.describe Dry::Operation::Extensions::ROM do
   include Dry::Monads[:result]
 
   let(:rom) do
-    ROM.container(:sql, "sqlite:file::memory:?cache=private") do |config|
+    database_url =
+      if RUBY_ENGINE == "jruby"
+        "jdbc:sqlite::memory:"
+      else
+        "sqlite:file::memory:?cache=private"
+      end
+
+    ROM.container(:sql, database_url) do |config|
       config.default.create_table(:foo) do
         column :bar, :string
       end
