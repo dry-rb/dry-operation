@@ -7,7 +7,7 @@ eval_gemfile "Gemfile.devtools"
 gemspec
 
 group :tools do
-  gem "debug"
+  gem "debug", platform: :mri
 end
 
 group :docs do
@@ -24,5 +24,7 @@ group :development, :test do
   gem "activerecord"
   gem "rom-sql"
   gem "sequel"
-  gem "sqlite3"
+  gem "sqlite3", platform: :mri
+  gem "jdbc-sqlite3", platform: :jruby
+  gem "activerecord-jdbcsqlite3-adapter", platform: :jruby
 end

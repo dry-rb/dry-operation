@@ -6,7 +6,11 @@ RSpec.describe Dry::Operation::Extensions::Sequel do
   include Dry::Monads[:result]
 
   let(:db) do
-    Sequel.sqlite
+    if RUBY_ENGINE == "jruby"
+      Sequel.connect("jdbc:sqlite::memory:")
+    else
+      Sequel.sqlite
+    end
   end
 
   before do
