@@ -103,4 +103,28 @@ RSpec.describe Dry::Operation::Extensions::ROM do
       instance.()
     ).to eql(Failure(:failure))
   end
+
+  it "passes options through to the ROM gateway transaction" do
+    instance = Class.new(base) do
+      def call
+        transaction(auto_savepoint: true) do
+          step create_record("outer1")
+
+          transaction do
+            step create_record("inner1")
+            raise Sequel::Rollback
+          end
+
+          step create_record("outer2")
+        end
+      end
+
+      def create_record(value)
+        Success(rom.relations[:foo].command(:create).(bar: value))
+      end
+    end.new(rom: rom)
+
+    expect(instance.()).to be_success
+    expect(rom.relations[:foo].to_a.map { |t| t[:bar] }).to match_array(["outer1", "outer2"])
+  end
 end

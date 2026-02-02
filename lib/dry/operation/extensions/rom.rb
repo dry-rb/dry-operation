@@ -98,7 +98,7 @@ module Dry
           def included(_klass)
             default_gateway = @gateway
 
-            define_method(:transaction) do |gateway: default_gateway, &steps|
+            define_method(:transaction) do |gateway: default_gateway, **opts, &steps|
               raise Dry::Operation::ExtensionError, <<~MSG unless respond_to?(:rom)
                 When using the ROM extension, you need to define a #rom method \
                 that returns the ROM container
@@ -106,7 +106,7 @@ module Dry
 
               intercepting_failure do
                 result = nil
-                rom.gateways[gateway].transaction do |t|
+                rom.gateways[gateway].transaction(**opts) do |t|
                   intercepting_failure(->(failure) {
                                          result = failure
                                          t.rollback!
