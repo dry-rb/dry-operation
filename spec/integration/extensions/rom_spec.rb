@@ -104,13 +104,13 @@ RSpec.describe Dry::Operation::Extensions::ROM do
     ).to eql(Failure(:failure))
   end
 
-  it "passes options through to the ROM gateway transaction" do
+  it "works with `savepoint` for nested transactions" do
     instance = Class.new(base) do
       def call
-        transaction(auto_savepoint: true) do
+        transaction do
           step create_record("outer1")
 
-          transaction do
+          transaction(savepoint: true) do
             step create_record("inner1")
             raise Sequel::Rollback
           end

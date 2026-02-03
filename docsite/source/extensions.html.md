@@ -41,16 +41,19 @@ class CreateUser < Dry::Operation
 end
 ```
 
-By default, the `:default` gateway will be used. You can specify a different gateway either when including the extension:
+By default, the `:default` gateway will be used and no additional options will be passed to the ROM transaction. You can specify a different gateway and/or default transaction options when including the extension:
 
 ```ruby
-include Dry::Operation::Extensions::ROM[gateway: :my_gateway]
+include Dry::Operation::Extensions::ROM[
+  gateway: :my_gateway,
+  isolation: :serializable
+]
 ```
 
-Or at runtime:
+You can also override the gateway and/or transaction options at runtime:
 
 ```ruby
-transaction(gateway: :my_gateway) do
+transaction(gateway: :my_gateway, isolation: :serializable) do
   # ...
 end
 ```

@@ -9,14 +9,14 @@ end
 module Dry
   class Operation
     module Extensions
-      # Add rom transaction support to operations
+      # Add ROM transaction support to operations
       #
       # When this extension is included, you can use a `#transaction` method
-      # to wrap the desired steps in a rom transaction. If any of the steps
+      # to wrap the desired steps in a ROM transaction. If any of the steps
       # returns a `Dry::Monads::Result::Failure`, the transaction will be rolled
       # back and, as usual, the rest of the flow will be skipped.
       #
-      # The extension expects the including class to give access to the rom
+      # The extension expects the including class to give access to the ROM
       # container via a `#rom` method.
       #
       # ```ruby
@@ -46,22 +46,32 @@ module Dry
       # end
       # ```
       #
-      # By default, the `:default` gateway will be used. You can change this
-      # when including the extension:
+      # By default, the `:default` gateway will be used and no additional
+      # options will be passed to the ROM transaction.
+      #
+      # You can change the default gateway and transaction options when
+      # including the extension:
       #
       # ```ruby
-      # include Dry::Operation::Extensions::ROM[gateway: :my_gateway]
+      # include Dry::Operation::Extensions::ROM[
+      #   gateway: :my_gateway,
+      #   isolation: :serializable
+      # ]
       # ```
       #
-      # Or you can change it at runtime:
+      # You can also override the gateway and/or transaction options at runtime:
       #
       # ```ruby
-      # user = transaction(gateway: :my_gateway) do
-      #  # ...
+      # user = transaction(
+      #   gateway: :my_gateway,
+      #   isolation: :serializable
+      # ) do
+      #   # ...
       # end
       # ```
       #
       # @see https://rom-rb.org
+
       module ROM
         DEFAULT_GATEWAY = :default
 
@@ -84,19 +94,21 @@ module Dry
         # Include the extension providing a custom gateway
         #
         # @param gateway [Symbol] the rom gateway to use
-        def self.[](gateway: DEFAULT_GATEWAY)
-          Builder.new(gateway: gateway)
+        def self.[](gateway: DEFAULT_GATEWAY, **options)
+          Builder.new(gateway: gateway, **options)
         end
 
         # @api private
         class Builder < Module
-          def initialize(gateway:)
+          def initialize(gateway:, **options)
             super()
             @gateway = gateway
+            @options = options
           end
 
           def included(_klass)
             default_gateway = @gateway
+            default_options = @options
 
             define_method(:transaction) do |gateway: default_gateway, **opts, &steps|
               raise Dry::Operation::ExtensionError, <<~MSG unless respond_to?(:rom)
@@ -106,7 +118,7 @@ module Dry
 
               intercepting_failure do
                 result = nil
-                rom.gateways[gateway].transaction(**opts) do |t|
+                rom.gateways[gateway].transaction(**default_options.merge(opts)) do |t|
                   intercepting_failure(->(failure) {
                                          result = failure
                                          t.rollback!
