@@ -9,15 +9,14 @@ end
 module Dry
   class Operation
     module Extensions
-      # Add ROM transaction support to operations
+      # Add Rom transaction support to operations.
       #
-      # When this extension is included, you can use a `#transaction` method
-      # to wrap the desired steps in a ROM transaction. If any of the steps
-      # returns a `Dry::Monads::Result::Failure`, the transaction will be rolled
-      # back and, as usual, the rest of the flow will be skipped.
+      # When this extension is included, you can use a `#transaction` method to wrap the desired
+      # steps in a Rom transaction. If any of the steps returns a `Dry::Monads::Result::Failure`,
+      # the transaction will be rolled back and, as usual, the rest of the flow will be skipped.
       #
-      # The extension expects the including class to give access to the ROM
-      # container via a `#rom` method.
+      # The extension expects the including class to give access to the Rom container via a `#rom`
+      # method.
       #
       # ```ruby
       # require "dry/operation/extensions/rom"
@@ -47,7 +46,7 @@ module Dry
       # ```
       #
       # By default, the `:default` gateway will be used and no additional
-      # options will be passed to the ROM transaction.
+      # options will be passed to the Rom transaction.
       #
       # You can change the default gateway and transaction options when
       # including the extension:
@@ -71,7 +70,6 @@ module Dry
       # ```
       #
       # @see https://rom-rb.org
-
       module ROM
         DEFAULT_GATEWAY = :default
 
@@ -112,8 +110,8 @@ module Dry
 
             define_method(:transaction) do |gateway: default_gateway, **opts, &steps|
               raise Dry::Operation::ExtensionError, <<~MSG unless respond_to?(:rom)
-                When using the ROM extension, you need to define a #rom method \
-                that returns the ROM container
+                When using the Rom extension, you need to define a #rom method \
+                that returns the Rom container
               MSG
 
               intercepting_failure do
