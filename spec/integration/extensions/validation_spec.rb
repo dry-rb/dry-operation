@@ -2,13 +2,13 @@
 
 require "spec_helper"
 
-RSpec.describe Dry::Operation::Extensions::Params do
+RSpec.describe Dry::Operation::Extensions::Validation do
   include Dry::Monads[:result]
 
   describe "validating operation inputs" do
     it "validates params and allows operation to proceed on success" do
       create_user = Class.new(Dry::Operation) do
-        include Dry::Operation::Extensions::Params
+        include Dry::Operation::Extensions::Validation
 
         params do
           required(:name).filled(:string)
@@ -43,7 +43,7 @@ RSpec.describe Dry::Operation::Extensions::Params do
       executed_steps = []
 
       create_user = Class.new(Dry::Operation) do
-        include Dry::Operation::Extensions::Params
+        include Dry::Operation::Extensions::Validation
 
         params do
           required(:name).filled(:string)
@@ -66,13 +66,16 @@ RSpec.describe Dry::Operation::Extensions::Params do
       result = create_user.new.call(name: "", email: "invalid")
 
       expect(result).to be_failure
-      expect(result.failure).to eq([:invalid_params, {name: ["must be filled"]}])
+      failure_type, validation_result = result.failure
+      expect(failure_type).to eq(:invalid)
+      expect(validation_result).to be_a(Dry::Validation::Result)
+      expect(validation_result.errors.to_h).to eq(name: ["must be filled"])
       expect(executed_steps).to be_empty
     end
 
-    it "coerces input values according to schema" do
+    it "coerces input values according to params schema" do
       calculate = Class.new(Dry::Operation) do
-        include Dry::Operation::Extensions::Params
+        include Dry::Operation::Extensions::Validation
 
         params do
           required(:x).value(:integer)
@@ -91,10 +94,37 @@ RSpec.describe Dry::Operation::Extensions::Params do
     end
   end
 
+  describe "with schema (no coercion)" do
+    it "validates without coercing types" do
+      operation = Class.new(Dry::Operation) do
+        include Dry::Operation::Extensions::Validation
+
+        schema do
+          required(:name).filled(:string)
+          required(:age).filled(:integer)
+        end
+
+        def call(input)
+          input
+        end
+      end
+
+      result = operation.new.call(name: "Alice", age: 25)
+      expect(result).to be_success
+      expect(result.value!).to eq(name: "Alice", age: 25)
+
+      result = operation.new.call(name: "Alice", age: "25")
+      expect(result).to be_failure
+      failure_type, validation_result = result.failure
+      expect(failure_type).to eq(:invalid)
+      expect(validation_result.errors.to_h[:age]).to be_present
+    end
+  end
+
   describe "with nested schemas" do
     it "validates nested structures" do
       create_order = Class.new(Dry::Operation) do
-        include Dry::Operation::Extensions::Params
+        include Dry::Operation::Extensions::Validation
 
         params do
           required(:customer).hash do
@@ -125,7 +155,7 @@ RSpec.describe Dry::Operation::Extensions::Params do
 
     it "returns detailed validation errors for nested structures" do
       create_order = Class.new(Dry::Operation) do
-        include Dry::Operation::Extensions::Params
+        include Dry::Operation::Extensions::Validation
 
         params do
           required(:customer).hash do
@@ -142,16 +172,17 @@ RSpec.describe Dry::Operation::Extensions::Params do
       result = create_order.new.call(customer: {name: "", email: ""})
 
       expect(result).to be_failure
-      failure_type, errors = result.failure
-      expect(failure_type).to eq(:invalid_params)
-      expect(errors[:customer]).to include(:name, :email)
+      failure_type, validation_result = result.failure
+      expect(failure_type).to eq(:invalid)
+      expect(validation_result).to be_a(Dry::Validation::Result)
+      expect(validation_result.errors.to_h[:customer]).to include(:name, :email)
     end
   end
 
   describe "with custom methods via operate_on" do
     it "validates params for custom wrapped methods" do
       processor = Class.new(Dry::Operation) do
-        include Dry::Operation::Extensions::Params
+        include Dry::Operation::Extensions::Validation
 
         operate_on :process, :transform
 
@@ -178,13 +209,15 @@ RSpec.describe Dry::Operation::Extensions::Params do
 
       result = instance.process(value: "")
       expect(result).to be_failure
-      expect(result.failure).to eq([:invalid_params, {value: ["must be filled"]}])
+      failure_type, validation_result = result.failure
+      expect(failure_type).to eq(:invalid)
+      expect(validation_result.errors.to_h).to eq(value: ["must be filled"])
     end
   end
 
-  describe "with params classes" do
-    it "accepts a pre-defined params class" do
-      user_params = Class.new(Dry::Operation::Extensions::Params::Params) do
+  describe "with pre-built contract classes" do
+    it "accepts a pre-defined Contract class" do
+      user_contract = Class.new(Dry::Validation::Contract) do
         params do
           required(:name).filled(:string)
           required(:email).filled(:string)
@@ -193,9 +226,9 @@ RSpec.describe Dry::Operation::Extensions::Params do
       end
 
       create_user = Class.new(Dry::Operation) do
-        include Dry::Operation::Extensions::Params
+        include Dry::Operation::Extensions::Validation
 
-        params user_params
+        params user_contract
 
         def call(input)
           input
@@ -208,11 +241,11 @@ RSpec.describe Dry::Operation::Extensions::Params do
 
       result = create_user.new.call(name: "", email: "invalid")
       expect(result).to be_failure
-      expect(result.failure.first).to eq(:invalid_params)
+      expect(result.failure.first).to eq(:invalid)
     end
 
-    it "allows params class reuse across multiple operations" do
-      shared_params = Class.new(Dry::Operation::Extensions::Params::Params) do
+    it "allows contract class reuse across multiple operations" do
+      shared_contract = Class.new(Dry::Validation::Contract) do
         params do
           required(:user_id).filled(:integer)
           required(:action).filled(:string)
@@ -220,9 +253,9 @@ RSpec.describe Dry::Operation::Extensions::Params do
       end
 
       audit_operation = Class.new(Dry::Operation) do
-        include Dry::Operation::Extensions::Params
+        include Dry::Operation::Extensions::Validation
 
-        params shared_params
+        params shared_contract
 
         def call(input)
           "Audited: #{input[:action]} by user #{input[:user_id]}"
@@ -230,9 +263,9 @@ RSpec.describe Dry::Operation::Extensions::Params do
       end
 
       log_operation = Class.new(Dry::Operation) do
-        include Dry::Operation::Extensions::Params
+        include Dry::Operation::Extensions::Validation
 
-        params shared_params
+        params shared_contract
 
         def call(input)
           "Logged: #{input[:action]} by user #{input[:user_id]}"
@@ -252,7 +285,7 @@ RSpec.describe Dry::Operation::Extensions::Params do
   describe "with contract" do
     it "validates with custom rules" do
       create_user = Class.new(Dry::Operation) do
-        include Dry::Operation::Extensions::Params
+        include Dry::Operation::Extensions::Validation
 
         contract do
           params do
@@ -275,14 +308,52 @@ RSpec.describe Dry::Operation::Extensions::Params do
 
       result = create_user.new.call(name: "Bob", age: 16)
       expect(result).to be_failure
-      expect(result.failure).to eq([:invalid_params, {age: ["must be 18 or older"]}])
+      failure_type, validation_result = result.failure
+      expect(failure_type).to eq(:invalid)
+      expect(validation_result.errors.to_h).to eq(age: ["must be 18 or older"])
+    end
+  end
+
+  describe "with injected contract dependency" do
+    it "uses the injected contract instead of class-level one" do
+      injected_contract_class = Class.new(Dry::Validation::Contract) do
+        params do
+          required(:name).filled(:string)
+        end
+      end
+
+      operation_class = Class.new(Dry::Operation) do
+        include Dry::Operation::Extensions::Validation
+
+        params do
+          required(:email).filled(:string)
+        end
+
+        attr_writer :contract
+
+        def call(input)
+          input
+        end
+      end
+
+      instance = operation_class.new
+      instance.contract = injected_contract_class.new
+
+      # Uses injected contract (validates :name), not class-level (validates :email)
+      result = instance.call(name: "Alice")
+      expect(result).to be_success
+      expect(result.value!).to eq(name: "Alice")
+
+      result = instance.call(name: "")
+      expect(result).to be_failure
+      expect(result.failure.first).to eq(:invalid)
     end
   end
 
   describe "inheritance" do
-    it "inherits params class from parent" do
+    it "inherits contract class from parent" do
       base_operation = Class.new(Dry::Operation) do
-        include Dry::Operation::Extensions::Params
+        include Dry::Operation::Extensions::Validation
 
         params do
           required(:name).filled(:string)
