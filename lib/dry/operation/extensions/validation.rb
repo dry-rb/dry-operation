@@ -33,7 +33,7 @@ module Dry
           # @param input [Hash] The input to validate
           # @return [Dry::Monads::Result] Success with validated params or Failure with result
           # @api private
-          def _validate(input)
+          def __validate__(input)
             contract = _resolve_contract
 
             return Success(input) unless contract
@@ -173,7 +173,7 @@ module Dry
               use_kwargs = !kwargs.empty? && input.empty? && rest.empty?
               actual_input = use_kwargs ? kwargs : input
 
-              validation_result = _validate(actual_input)
+              validation_result = __validate__(actual_input)
 
               case validation_result
               when Dry::Monads::Success
