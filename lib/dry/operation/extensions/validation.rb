@@ -124,8 +124,7 @@ module Dry
 
           # @api private
           def _apply_validation
-            methods_to_wrap = @_prepend_manager
-              .instance_variable_get(:@methods_to_prepend)
+            methods_to_wrap = @_prepend_manager.instance_variable_get(:@methods_to_prepend)
 
             methods_to_wrap.each do |method_name|
               _prepend_validation_for(method_name)
@@ -136,8 +135,7 @@ module Dry
           def method_added(method_name)
             return super unless @_contract_class
 
-            methods_to_wrap = @_prepend_manager
-              .instance_variable_get(:@methods_to_prepend)
+            methods_to_wrap = @_prepend_manager.instance_variable_get(:@methods_to_prepend)
 
             if methods_to_wrap.include?(method_name)
               _prepend_validation_for(method_name)
