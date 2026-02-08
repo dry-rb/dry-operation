@@ -7,6 +7,7 @@ Bundler.require :tools
 
 require "dry/operation"
 require "dry/operation/extensions/active_record"
+require "dry/operation/extensions/validation"
 require "dry/operation/extensions/rom"
 require "dry/operation/extensions/sequel"
 
