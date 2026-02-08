@@ -158,14 +158,14 @@ RSpec.describe Dry::Operation::Extensions::Validation do
     end
   end
 
-  describe "#_validate" do
+  describe "#__validate__" do
     it "returns Success with input when no contract class is defined" do
       klass = Class.new(Dry::Operation) do
         include Dry::Operation::Extensions::Validation
       end
 
       instance = klass.new
-      result = instance.send(:_validate, name: "John")
+      result = instance.send(:__validate__, name: "John")
 
       expect(result).to eq(Success(name: "John"))
     end
@@ -180,7 +180,7 @@ RSpec.describe Dry::Operation::Extensions::Validation do
       end
 
       instance = klass.new
-      result = instance.send(:_validate, name: "John")
+      result = instance.send(:__validate__, name: "John")
 
       expect(result).to eq(Success(name: "John"))
     end
@@ -195,7 +195,7 @@ RSpec.describe Dry::Operation::Extensions::Validation do
       end
 
       instance = klass.new
-      result = instance.send(:_validate, name: "")
+      result = instance.send(:__validate__, name: "")
 
       expect(result).to be_a(Dry::Monads::Failure)
       failure_type, validation_result = result.failure
@@ -214,7 +214,7 @@ RSpec.describe Dry::Operation::Extensions::Validation do
       end
 
       instance = klass.new
-      result = instance.send(:_validate, age: "25")
+      result = instance.send(:__validate__, age: "25")
 
       expect(result).to eq(Success(age: 25))
     end
@@ -236,10 +236,10 @@ RSpec.describe Dry::Operation::Extensions::Validation do
 
       instance = klass.new
 
-      result = instance.send(:_validate, name: "JOHN")
+      result = instance.send(:__validate__, name: "JOHN")
       expect(result).to eq(Success(name: "JOHN"))
 
-      result = instance.send(:_validate, name: "john")
+      result = instance.send(:__validate__, name: "john")
       expect(result).to be_a(Dry::Monads::Failure)
       failure_type, validation_result = result.failure
       expect(failure_type).to eq(:invalid)
@@ -267,10 +267,10 @@ RSpec.describe Dry::Operation::Extensions::Validation do
       instance.contract = contract_class.new
 
       # Should use the injected contract (which validates :name), not the class-level one (which validates :email)
-      result = instance.send(:_validate, name: "John")
+      result = instance.send(:__validate__, name: "John")
       expect(result).to eq(Success(name: "John"))
 
-      result = instance.send(:_validate, name: "")
+      result = instance.send(:__validate__, name: "")
       expect(result).to be_a(Dry::Monads::Failure)
     end
 
@@ -297,7 +297,7 @@ RSpec.describe Dry::Operation::Extensions::Validation do
       expect(instantiated).to be(false)
 
       instance = klass.new
-      instance.send(:_validate, name: "John")
+      instance.send(:__validate__, name: "John")
 
       expect(instantiated).to be(true)
     end
