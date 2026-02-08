@@ -154,14 +154,28 @@ module Dry
             return if _validation_wrapped_methods.include?(method_name)
             return unless instance_methods.include?(method_name)
 
-            prepend(Extensions::Validation.create_validator_for(method_name))
+            prepend ValidationStep.new(method_name)
             _validation_wrapped_methods << method_name
           end
         end
 
         # @api private
-        def self.create_validator_for(method_name)
-          Module.new do
+        class ValidationStep < Module
+          def initialize(method_name)
+            super()
+            @method_name = method_name
+            define_validation_method
+          end
+
+          def name
+            "Dry::Operation::Extensions::Validation::ValidationStep[#{@method_name}]"
+          end
+
+          private
+
+          def define_validation_method
+            method_name = @method_name
+
             define_method(method_name) do |input = {}, *rest, **kwargs, &block|
               use_kwargs = !kwargs.empty? && input.empty? && rest.empty?
               actual_input = use_kwargs ? kwargs : input
