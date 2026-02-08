@@ -34,8 +34,6 @@ module Dry
           # @return [Dry::Monads::Result] Success with validated params or Failure with result
           # @api private
           def __validate__(input)
-            contract = __resolve_contract__
-
             return Success(input) unless contract
 
             result = contract.call(input)
@@ -54,13 +52,10 @@ module Dry
           #
           # @return [Dry::Validation::Contract, nil]
           # @api private
-          def __resolve_contract__
+          def contract
             return @contract if defined?(@contract)
 
-            contract_class = self.class._contract_class
-            return unless contract_class
-
-            @_contract_instance ||= contract_class.new
+            @contract = self.class._contract_class&.new
           end
         end
 
