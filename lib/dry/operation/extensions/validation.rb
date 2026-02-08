@@ -28,6 +28,19 @@ module Dry
 
           private
 
+          # Resolves the contract to use for validation
+          #
+          # Uses injected @contract if present, otherwise lazily instantiates
+          # from the class-level _contract_class
+          #
+          # @return [Dry::Validation::Contract, nil]
+          # @api private
+          def contract
+            return @contract if defined?(@contract)
+
+            @contract = self.class._contract_class&.new
+          end
+
           # Validates input against the resolved contract
           #
           # @param input [Hash] The input to validate
@@ -43,19 +56,6 @@ module Dry
             else
               Failure[:invalid, result]
             end
-          end
-
-          # Resolves the contract to use for validation
-          #
-          # Uses injected @contract if present, otherwise lazily instantiates
-          # from the class-level _contract_class
-          #
-          # @return [Dry::Validation::Contract, nil]
-          # @api private
-          def contract
-            return @contract if defined?(@contract)
-
-            @contract = self.class._contract_class&.new
           end
         end
 
