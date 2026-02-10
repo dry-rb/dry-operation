@@ -156,7 +156,7 @@ module Dry
 
           private
 
-          # rubocop:disable Metrics/AbcSize, Metrics/PerceivedComplexity
+          # rubocop:disable Metrics/PerceivedComplexity
           def define_validation_method
             # Cache named kwargs outside the method closure so we only search for them once.
             named_kwargs = nil
@@ -191,7 +191,7 @@ module Dry
               end
             end
           end
-          # rubocop:enable Metrics/AbcSize, Metrics/PerceivedComplexity
+          # rubocop:enable Metrics/PerceivedComplexity
 
           NAMED_KWARG_TYPES = %i[key keyreq].freeze
 
