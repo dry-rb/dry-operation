@@ -158,14 +158,11 @@ module Dry
 
           # rubocop:disable Metrics/AbcSize, Metrics/PerceivedComplexity
           def define_validation_method
-            method_name = @method_name
-
-            # Capture named kwargs outside the define_method closure, so we only need to search for
-            # them once.
+            # Cache named kwargs outside the method closure so we only search for them once.
             named_kwargs = nil
             find_named_kwargs = method(:find_named_kwargs)
 
-            define_method(method_name) do |input = {}, *rest, **kwargs, &block|
+            define_method(@method_name) do |input = {}, *rest, **kwargs, &block|
               use_kwargs = !kwargs.empty? && input.empty? && rest.empty?
               actual_input = use_kwargs ? kwargs : input
 
@@ -179,7 +176,7 @@ module Dry
                   # Ensure named kwargs from the wrapped method are still passed through, even if
                   # not included in the validation output. This is important for kwargs that exist
                   # for the method's own logic, outside of the scope of validatable input.
-                  named_kwargs ||= find_named_kwargs.call(method(method_name).super_method)
+                  named_kwargs ||= find_named_kwargs.call(method(__method__).super_method)
                   passthrough_keys = actual_input
                     .slice(*named_kwargs)
                     .reject { |k, _| validated_input.key?(k) }
