@@ -108,6 +108,8 @@ module Dry
             _apply_validation
           end
 
+          private
+
           # @api private
           def method_added(method_name)
             return unless @_prepend_manager.registered_methods.include?(method_name)
@@ -124,8 +126,6 @@ module Dry
               subclass.instance_variable_set(:@contract_class, @contract_class)
             end
           end
-
-          private
 
           def _apply_validation(*method_names)
             method_names = @_prepend_manager.registered_methods if method_names.empty?
