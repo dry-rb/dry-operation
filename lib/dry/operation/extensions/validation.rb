@@ -67,9 +67,7 @@ module Dry
           # @return [void]
           def params(klass = nil, &block)
             if klass.nil?
-              klass = Class.new(Dry::Validation::Contract) do
-                params(&block)
-              end
+              klass = Class.new(Dry::Validation::Contract) { params(&block) }
               const_set(CONTRACT_CLASS_NAME, klass)
             end
 
@@ -84,9 +82,7 @@ module Dry
           # @return [void]
           def schema(klass = nil, &block)
             if klass.nil?
-              klass = Class.new(Dry::Validation::Contract) do
-                schema(&block)
-              end
+              klass = Class.new(Dry::Validation::Contract) { schema(&block) }
               const_set(CONTRACT_CLASS_NAME, klass)
             end
 
