@@ -156,6 +156,7 @@ module Dry
 
           private
 
+          # rubocop:disable Metrics/AbcSize, Metrics/PerceivedComplexity
           def define_validation_method
             method_name = @method_name
 
@@ -181,7 +182,7 @@ module Dry
                   named_kwargs ||= find_named_kwargs.call(method(method_name).super_method)
                   passthrough_keys = actual_input
                     .slice(*named_kwargs)
-                    .select { |k, _| !validated_input.key?(k) }
+                    .reject { |k, _| validated_input.key?(k) }
                   validated_input = passthrough_keys.merge(validated_input)
 
                   super(**validated_input, &block)
@@ -193,8 +194,7 @@ module Dry
               end
             end
           end
-
-          private
+          # rubocop:enable Metrics/AbcSize, Metrics/PerceivedComplexity
 
           NAMED_KWARG_TYPES = %i[key keyreq].freeze
 
