@@ -31,14 +31,14 @@ module Dry
           # Resolves the contract to use for validation
           #
           # Uses injected @contract if present, otherwise lazily instantiates
-          # from the class-level _contract_class
+          # from the class-level contract_class
           #
           # @return [Dry::Validation::Contract, nil]
           # @api private
           def contract
             return @contract if defined?(@contract)
 
-            @contract = self.class._contract_class&.new
+            @contract = self.class.contract_class&.new
           end
 
           # Validates input against the resolved contract
@@ -60,6 +60,9 @@ module Dry
         end
 
         module ClassMethods
+          # @api private
+          attr_reader :contract_class
+
           # Define validation rules using params DSL (includes coercion)
           #
           # @param klass [Class, nil] A Dry::Validation::Contract subclass to use
@@ -71,7 +74,7 @@ module Dry
               const_set(CONTRACT_CLASS_NAME, klass)
             end
 
-            @_contract_class = klass
+            @contract_class = klass
             _apply_validation
           end
 
@@ -86,7 +89,7 @@ module Dry
               const_set(CONTRACT_CLASS_NAME, klass)
             end
 
-            @_contract_class = klass
+            @contract_class = klass
             _apply_validation
           end
 
@@ -101,12 +104,9 @@ module Dry
               const_set(CONTRACT_CLASS_NAME, klass)
             end
 
-            @_contract_class = klass
+            @contract_class = klass
             _apply_validation
           end
-
-          # @api private
-          attr_reader :_contract_class
 
           # @api private
           def _validation_wrapped_methods
@@ -139,8 +139,8 @@ module Dry
           def inherited(subclass)
             super
 
-            if defined?(@_contract_class)
-              subclass.instance_variable_set(:@_contract_class, @_contract_class)
+            if defined?(@contract_class)
+              subclass.instance_variable_set(:@contract_class, @contract_class)
             end
           end
 

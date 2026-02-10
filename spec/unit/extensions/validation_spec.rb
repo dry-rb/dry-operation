@@ -15,8 +15,8 @@ RSpec.describe Dry::Operation::Extensions::Validation do
         end
       end
 
-      expect(klass._contract_class).to be_a(Class)
-      expect(klass._contract_class.superclass).to eq(Dry::Validation::Contract)
+      expect(klass.contract_class).to be_a(Class)
+      expect(klass.contract_class.superclass).to eq(Dry::Validation::Contract)
     end
 
     it "accepts a pre-built Contract class" do
@@ -32,7 +32,7 @@ RSpec.describe Dry::Operation::Extensions::Validation do
         params contract_class
       end
 
-      expect(klass._contract_class).to eq(contract_class)
+      expect(klass.contract_class).to eq(contract_class)
     end
 
     it "allows contract class to be inherited by subclasses" do
@@ -46,7 +46,7 @@ RSpec.describe Dry::Operation::Extensions::Validation do
 
       child = Class.new(parent)
 
-      expect(child._contract_class).to eq(parent._contract_class)
+      expect(child.contract_class).to eq(parent.contract_class)
     end
 
     it "allows subclass to override parent contract class" do
@@ -64,7 +64,7 @@ RSpec.describe Dry::Operation::Extensions::Validation do
         end
       end
 
-      expect(child._contract_class).not_to eq(parent._contract_class)
+      expect(child.contract_class).not_to eq(parent.contract_class)
     end
   end
 
@@ -78,8 +78,8 @@ RSpec.describe Dry::Operation::Extensions::Validation do
         end
       end
 
-      expect(klass._contract_class).to be_a(Class)
-      expect(klass._contract_class.superclass).to eq(Dry::Validation::Contract)
+      expect(klass.contract_class).to be_a(Class)
+      expect(klass.contract_class.superclass).to eq(Dry::Validation::Contract)
     end
 
     it "accepts a pre-built Contract class" do
@@ -95,7 +95,7 @@ RSpec.describe Dry::Operation::Extensions::Validation do
         schema contract_class
       end
 
-      expect(klass._contract_class).to eq(contract_class)
+      expect(klass.contract_class).to eq(contract_class)
     end
 
     it "does not coerce values" do
@@ -137,8 +137,8 @@ RSpec.describe Dry::Operation::Extensions::Validation do
         end
       end
 
-      expect(klass._contract_class).to be_a(Class)
-      expect(klass._contract_class.superclass).to eq(Dry::Validation::Contract)
+      expect(klass.contract_class).to be_a(Class)
+      expect(klass.contract_class.superclass).to eq(Dry::Validation::Contract)
     end
 
     it "accepts a pre-built Contract class" do
@@ -154,7 +154,7 @@ RSpec.describe Dry::Operation::Extensions::Validation do
         contract contract_class
       end
 
-      expect(klass._contract_class).to eq(contract_class)
+      expect(klass.contract_class).to eq(contract_class)
     end
   end
 
