@@ -374,4 +374,61 @@ RSpec.describe Dry::Operation::Extensions::Validation do
       expect(result).to be_failure
     end
   end
+
+  describe "selective validation with unvalidated keys preserved" do
+    it "preserves unvalidated named kwargs and coerces validated values" do
+      calculate = Class.new(Dry::Operation) do
+        include Dry::Operation::Extensions::Validation
+
+        params do
+          # Validate and coerce x and y, but not operation
+          required(:x).value(:integer)
+          required(:y).value(:integer)
+        end
+
+        def call(operation:, **values)
+          # operation is passed through (not validated)
+          # x and y are coerced from strings to integers
+          result = case operation
+                   when :add then values[:x] + values[:y]
+                   else 0
+                   end
+
+          {operation:, x: values[:x], y: values[:y], result:}
+        end
+      end
+
+      # x and y are coerced to integers, operation is preserved as symbol
+      result = calculate.new.call(operation: :add, x: "10", y: "20")
+
+      expect(result).to be_success
+      expect(result.value!).to eq(operation: :add, x: 10, y: 20, result: 30)
+    end
+
+    it "filters out invalid keys in splat args while preserving named kwargs" do
+      update_user = Class.new(Dry::Operation) do
+        include Dry::Operation::Extensions::Validation
+
+        params do
+          required(:name).filled(:string)
+          optional(:email).filled(:string)
+          # Deliberately doesn't allow :admin - should be filtered
+        end
+
+        def call(id:, **attrs)
+          # id should be preserved (named kwarg)
+          # admin should be filtered (not in contract, and not a named kwarg)
+          attrs.merge(id: id)
+        end
+      end
+
+      # User tries to sneak in admin: true
+      result = update_user.new.call(id: 123, name: "Alice", admin: true)
+
+      expect(result).to be_success
+      # admin should NOT be present - contract filtered it
+      expect(result.value!).to eq(id: 123, name: "Alice")
+      expect(result.value!).not_to have_key(:admin)
+    end
+  end
 end

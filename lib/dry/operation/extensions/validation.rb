@@ -159,6 +159,11 @@ module Dry
           def define_validation_method
             method_name = @method_name
 
+            # Capture named kwargs outside the define_method closure, so we only need to search for
+            # them once.
+            named_kwargs = nil
+            find_named_kwargs = method(:find_named_kwargs)
+
             define_method(method_name) do |input = {}, *rest, **kwargs, &block|
               use_kwargs = !kwargs.empty? && input.empty? && rest.empty?
               actual_input = use_kwargs ? kwargs : input
@@ -170,6 +175,15 @@ module Dry
                 validated_input = validation_result.value!
 
                 if use_kwargs
+                  # Ensure named kwargs from the wrapped method are still passed through, even if
+                  # not included in the validation output. This is important for kwargs that exist
+                  # for the method's own logic, outside of the scope of validatable input.
+                  named_kwargs ||= find_named_kwargs.call(method(method_name).super_method)
+                  passthrough_keys = actual_input
+                    .slice(*named_kwargs)
+                    .select { |k, _| !validated_input.key?(k) }
+                  validated_input = passthrough_keys.merge(validated_input)
+
                   super(**validated_input, &block)
                 else
                   super(validated_input, *rest, **kwargs, &block)
@@ -178,6 +192,26 @@ module Dry
                 throw_failure(validation_result)
               end
             end
+          end
+
+          private
+
+          NAMED_KWARG_TYPES = %i[key keyreq].freeze
+
+          def find_named_kwargs(method)
+            # Walk up the method chain to find the first method with named kwargs.
+            while method
+              named_kwargs = method
+                .parameters
+                .select { |type, _| NAMED_KWARG_TYPES.include?(type) }
+                .map(&:last)
+
+              return named_kwargs if named_kwargs.any?
+
+              method = method.super_method
+            end
+
+            []
           end
         end
       end
