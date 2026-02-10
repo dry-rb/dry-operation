@@ -159,10 +159,16 @@ module Dry
     #
     # Throws `:halt` with a {Dry::Monads::Result::Failure} on failure.
     #
-    # @param result [Dry::Monads::Result]
+    # If the given value responds to `#to_result` (e.g. `Try`, `Maybe`, `Validated`),
+    # it will be automatically converted to a `Result` before processing.
+    #
+    # @param result [Dry::Monads::Result, #to_result]
     # @return [Object] wrapped value
     # @see #steps
     def step(result)
+      # Auto-convert monads that support #to_result
+      result = result.to_result if result.respond_to?(:to_result) && !result.is_a?(Dry::Monads::Result)
+
       if result.is_a?(Dry::Monads::Result)
         result.value_or { throw_failure(result) }
       else

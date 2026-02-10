@@ -9,6 +9,36 @@ and this project adheres to [Break Versioning](https://www.taoensso.com/break-ve
 
 ### Added
 
+- `#step` now automatically converts monads that respond to `#to_result` (e.g. `Try`, `Maybe`, `Validated`) to `Result` objects, eliminating the need to call `.to_result` explicitly. (@timriley)
+    ```ruby
+    class MyOperation < Dry::Operation
+      include Dry::Monads[:try]
+
+      def call(input)
+        # Try is automatically converted to Result
+        data = step Try { fetch_data(input) }
+        user = step Success(create_user(data))
+        user
+      end
+    end
+    ```
+
+- `Monads` extension providing convenient access to additional dry-monads (`Try`, `Maybe`, `Validated`) that work seamlessly with `#step`. (@timriley)
+    ```ruby
+    require "dry/operation/extensions/monads"
+
+    class MyOperation < Dry::Operation
+      include Dry::Operation::Extensions::Monads
+
+      def call(input)
+        data = step Try { fetch_data(input) }
+        value = step Maybe(input[:optional])
+        result = step Success(process(data, value))
+        result
+      end
+    end
+    ```
+
 ### Changed
 
 ### Deprecated

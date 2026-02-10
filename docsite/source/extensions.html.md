@@ -4,6 +4,122 @@ layout: gem-single
 name: dry-operation
 ---
 
+### Monads
+
+The `Monads` extension provides convenient access to additional monads from dry-monads that work seamlessly with `#step`. The extension automatically converts these monads to `Result` objects, allowing you to use them directly without calling `.to_result`.
+
+The following monads are included:
+- `Try` - for exception handling
+- `Maybe` - for handling nil/None/Some cases
+- `Validated` - for validation with error accumulation
+
+Note: The `Do` notation is intentionally not included, as dry-operation's `#step` serves the same purpose.
+
+Require and include the extension in your operation class:
+
+```ruby
+require "dry/operation/extensions/monads"
+
+class MyOperation < Dry::Operation
+  include Dry::Operation::Extensions::Monads
+
+  def call(input)
+    # Use Try for exception handling
+    data = step Try { fetch_data(input) }
+
+    # Use Maybe for nil handling
+    value = step Maybe(input[:optional_field])
+
+    # Use Success/Failure as usual
+    result = step process(data, value)
+    
+    result
+  end
+
+  def fetch_data(input)
+    # May raise an exception
+    HTTP.get("/data/#{input}")
+  end
+
+  def process(data, value)
+    Success({data: data, value: value})
+  end
+end
+```
+
+#### Automatic monad conversion
+
+Even without the extension, `#step` automatically converts any monad that responds to `#to_result`:
+
+```ruby
+class MyOperation < Dry::Operation
+  include Dry::Monads[:try]
+
+  def call(input)
+    # Try is automatically converted to Result
+    step Try { risky_operation(input) }
+  end
+end
+```
+
+This means you can use monads from dry-monads throughout your codebase without needing to call `.to_result` explicitly.
+
+#### Migration from dry-transaction
+
+If you're migrating from dry-transaction, you can leverage dry-monads directly:
+
+**dry-transaction (class-level):**
+```ruby
+class CreateUser
+  include Dry::Transaction(container: Container)
+
+  map :process
+  try :validate, catch: ValidationError
+  map :create
+  tee :notify
+end
+```
+
+**dry-operation (instance-level):**
+```ruby
+class CreateUser < Dry::Operation
+  include Dry::Operation::Extensions::Monads
+
+  def call(input)
+    # Wrap raw values in Success
+    attrs = step Success(process(input))
+    
+    # Use Try for exception handling
+    validated = step Try { validate(attrs) }
+    
+    # Wrap raw values in Success
+    user = step Success(create(validated))
+    
+    # Just call methods directly for side effects
+    notify(user)
+    
+    user
+  end
+
+  def process(input)
+    input.merge(processed: true)
+  end
+
+  def validate(attrs)
+    raise ValidationError unless attrs[:valid]
+    attrs
+  end
+
+  def create(attrs)
+    User.new(attrs)
+  end
+
+  def notify(user)
+    Mailer.send_welcome(user)
+  end
+end
+```
+
 ### ROM
 
 The `ROM` extension adds transaction support to your operations when working with the [ROM](https://rom-rb.org) database persistence toolkit. When a step returns a `Failure`, the transaction will automatically roll back, ensuring data consistency.
