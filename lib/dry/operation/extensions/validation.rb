@@ -138,7 +138,8 @@ module Dry
           # @api private
           def inherited(subclass)
             super
-            if defined?(@_contract_class) && @_contract_class
+
+            if defined?(@_contract_class)
               subclass.instance_variable_set(:@_contract_class, @_contract_class)
             end
           end
