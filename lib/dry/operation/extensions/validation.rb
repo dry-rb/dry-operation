@@ -109,29 +109,10 @@ module Dry
           end
 
           # @api private
-          def _validation_wrapped_methods
-            @_validation_wrapped_methods ||= []
-          end
-
-          # @api private
-          def _apply_validation
-            methods_to_wrap = @_prepend_manager.instance_variable_get(:@methods_to_prepend)
-
-            methods_to_wrap.each do |method_name|
-              _prepend_validation_for(method_name)
-            end
-          end
-
-          # @api private
           def method_added(method_name)
-            return super unless @_contract_class
+            return unless @_prepend_manager.registered_methods.include?(method_name)
 
-            methods_to_wrap = @_prepend_manager.instance_variable_get(:@methods_to_prepend)
-
-            if methods_to_wrap.include?(method_name)
-              _prepend_validation_for(method_name)
-            end
-
+            _apply_validation(method_name)
             super
           end
 
@@ -146,13 +127,18 @@ module Dry
 
           private
 
-          # @api private
-          def _prepend_validation_for(method_name)
-            return if _validation_wrapped_methods.include?(method_name)
-            return unless instance_methods.include?(method_name)
+          def _apply_validation(*method_names)
+            method_names = @_prepend_manager.registered_methods if method_names.empty?
+            method_names &= @_prepend_manager.registered_methods
 
-            prepend ValidationStep.new(method_name)
-            _validation_wrapped_methods << method_name
+            @_validated_methods ||= []
+
+            method_names.each do |method_name|
+              next if @_validated_methods.include?(method_name)
+
+              prepend ValidationStep.new(method_name)
+              @_validated_methods << method_name
+            end
           end
         end
 

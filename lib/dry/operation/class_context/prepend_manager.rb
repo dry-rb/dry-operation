@@ -24,6 +24,10 @@ module Dry
           end
         end
 
+        def registered_methods
+          @methods_to_prepend
+        end
+
         def void
           ensure_pristine
 
