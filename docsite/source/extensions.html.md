@@ -173,9 +173,9 @@ end
 
 ⚠️  Warning: The `:requires_new` option for nested transactions is not yet fully supported.
 
-### Params
+### Validation
 
-The `Params` extension adds input validation support to your operations using [dry-validation](https://dry-rb.org/gems/dry-validation/). When an operation is called, the input will be automatically validated against the defined rules before the operation logic executes. If validation fails, the operation returns a `Failure` with detailed error information without executing the operation body.
+The `Validation` extension adds input validation support to your operations using [dry-validation](https://dry-rb.org/gems/dry-validation/). When an operation is called, the input will be automatically validated against the defined rules before the operation logic executes. If validation fails, the operation returns a `Failure` with detailed error information without executing the operation body.
 
 Make sure you have dry-validation installed:
 
@@ -183,18 +183,24 @@ Make sure you have dry-validation installed:
 gem "dry-validation"
 ```
 
-Require and include the extension in your operation class, then define validation rules using the `params` class method:
+Require and include the extension in your operation class, then define validation rules using the `contract` class method:
 
 ```ruby
-require "dry/operation/extensions/params"
+require "dry/operation/extensions/validation"
 
 class CreateUser < Dry::Operation
-  include Dry::Operation::Extensions::Params
+  include Dry::Operation::Extensions::Validation
 
-  params do
-    required(:name).filled(:string)
-    required(:email).filled(:string)
-    optional(:age).maybe(:integer)
+  contract do
+    params do
+      required(:name).filled(:string)
+      required(:email).filled(:string)
+      optional(:age).maybe(:integer)
+    end
+
+    rule(:age) do
+      key.failure("must be 18 or older") if value && value < 18
+    end
   end
 
   def call(input)
@@ -207,26 +213,107 @@ class CreateUser < Dry::Operation
 end
 ```
 
-When validation succeeds, the operation receives the validated and coerced input:
+When validation succeeds, the operation receives the validated input:
 
 ```ruby
 result = CreateUser.new.call(name: "Alice", email: "alice@example.com", age: "25")
-# => Success(user) with age coerced to integer 25
+# => Success(user) with age coerced to integer 25 and validated by the age rule
 ```
 
-When validation fails, the operation returns a `Failure` tagged with `:invalid_params` and the validation errors, without executing any of the operation's steps:
+When validation fails, the operation returns a `Failure` tuple containing `:invalid` and the validation result, and does not execute any of the operation's steps.
 
 ```ruby
 result = CreateUser.new.call(name: "", email: "invalid")
-# => Failure[:invalid_params, {name: ["must be filled"]}]
+# => Failure[:invalid, #<Dry::Validation::Result ...>]
 ```
 
-#### Using params classes
+#### Input arguments and validation
 
-You can also pass a pre-defined params class to `params` instead of a block, which is useful for reusing validation rules across multiple operations:
+The validation contract receives the input from your operation's wrapped method (typically `#call`). This can be provided as either a hash argument or keyword arguments:
 
 ```ruby
-class UserParams < Dry::Operation::Extensions::Params::Params
+# Hash argument
+result = CreateUser.new.call({name: "Alice", email: "alice@example.com", age: 25})
+
+# Keyword arguments
+result = CreateUser.new.call(name: "Alice", email: "alice@example.com", age: 25)
+```
+
+When using keyword arguments, any keywords that exist in your method signature but are not present in the validation output will still be passed through. This allows you to mix validated input with method-specific parameters:
+
+```ruby
+class CreateUser < Dry::Operation
+  include Dry::Operation::Extensions::Validation
+
+  contract do
+    params do
+      required(:name).filled(:string)
+      required(:email).filled(:string)
+    end
+  end
+
+  def call(name:, email:, notify: true)
+    # `notify` is passed through even though it's not in the contract
+    user = step create_user(name: name, email: email)
+    step send_notification(user) if notify
+    user
+  end
+
+  # ...
+end
+```
+
+#### Using `schema` and `params` blocks
+
+For simpler validation scenarios where you don't need custom rules, you can use `params` or `schema` blocks directly instead of `contract`:
+
+The `params` method provides validation with type coercion for HTTP params:
+
+```ruby
+class CreateUser < Dry::Operation
+  include Dry::Operation::Extensions::Validation
+
+  params do
+    required(:name).filled(:string)
+    required(:email).filled(:string)
+    optional(:age).maybe(:integer)
+  end
+
+  def call(input)
+    # input[:age] will be coerced from "25" to 25
+    user = step create_user(input)
+    step notify(user)
+    user
+  end
+
+  # ...
+end
+```
+
+The `schema` method provides validation without type coercion:
+
+```ruby
+class ProcessData < Dry::Operation
+  include Dry::Operation::Extensions::Validation
+
+  schema do
+    required(:name).filled(:string)
+    required(:age).filled(:integer)
+  end
+
+  def call(input)
+    # input[:age] must already be an integer; "25" would fail validation
+    # ...
+  end
+end
+```
+
+#### Using contract classes
+
+You can also pass a contract class to `contract`, instead of a block. This is useful for reusing validation rules across multiple operations:
+
+```ruby
+class UserContract < Dry::Validation::Contract
   params do
     required(:name).filled(:string)
     required(:email).filled(:string)
@@ -235,9 +322,9 @@ class UserParams < Dry::Operation::Extensions::Params::Params
 end
 
 class CreateUser < Dry::Operation
-  include Dry::Operation::Extensions::Params
+  include Dry::Operation::Extensions::Validation
 
-  params UserParams
+  contract UserContract
 
   def call(input)
     user = step create_user(input)
@@ -249,9 +336,9 @@ class CreateUser < Dry::Operation
 end
 
 class UpdateUser < Dry::Operation
-  include Dry::Operation::Extensions::Params
+  include Dry::Operation::Extensions::Validation
 
-  params UserParams
+  contract UserContract
 
   def call(input)
     # ...
@@ -259,23 +346,17 @@ class UpdateUser < Dry::Operation
 end
 ```
 
-#### Using contract for custom validation rules
+#### Injected contracts
 
-For more complex validation scenarios, use the `contract` method which provides access to the full dry-validation contract API, including custom rules:
+You can also provide a contract instance via dependency injection. Make your contract available as  a `#contract` method or `@contract` instance variable:
 
 ```ruby
 class CreateUser < Dry::Operation
-  include Dry::Operation::Extensions::Params
+  include Dry::Operation::Extensions::Validation
 
-  contract do
-    params do
-      required(:name).filled(:string)
-      required(:age).filled(:integer)
-    end
-
-    rule(:age) do
-      key.failure("must be 18 or older") if value < 18
-    end
+  def initialize(contract:)
+    @contract = contract
+    super()
   end
 
   def call(input)
@@ -284,13 +365,13 @@ class CreateUser < Dry::Operation
 end
 ```
 
-#### Custom wrapped methods
+#### Validating custom wrapped methods
 
-The `params` extension works seamlessly with custom wrapped methods when using `.operate_on`:
+Validation applies to any custom wrapped methods configured with `.operate_on`:
 
 ```ruby
 class ProcessData < Dry::Operation
-  include Dry::Operation::Extensions::Params
+  include Dry::Operation::Extensions::Validation
 
   operate_on :process, :transform
 
@@ -310,4 +391,4 @@ end
 
 #### Inheritance
 
-Params classes are inherited by subclasses, allowing you to build operation hierarchies with shared validation rules.
+Validation contracts are inherited by subclasses, allowing you to build operation hierarchies with shared validation rules.
