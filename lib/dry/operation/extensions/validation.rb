@@ -9,12 +9,16 @@ end
 module Dry
   class Operation
     module Extensions
-      # Add validation support to operations using dry-validation
+      # Adds validation support to operations using Dry Validation.
       #
-      # When this extension is included, you can use class-level `params`, `schema`,
-      # and `contract` methods to define validation rules for your operation's inputs.
+      # When this extension is included, define your contract on your operation class using
+      # `params`, `schema`, or `contract`, or make a `#contract` dependency available from your
+      # operation instance.
       #
       # @see https://dry-rb.org/gems/dry-validation/
+      #
+      # @api public
+      # @since 1.2.0
       module Validation
         CONTRACT_CLASS_NAME = "Contract"
 
@@ -23,17 +27,20 @@ module Dry
           klass.prepend(InstanceMethods)
         end
 
+        # @api public
+        # @since 1.2.0
         module InstanceMethods
           include Dry::Monads::Result::Mixin
 
           private
 
-          # Resolves the contract to use for validation
+          # Returns the contract to use for validation.
           #
-          # Uses injected @contract if present, otherwise lazily instantiates
-          # from the class-level contract_class
+          # Uses an existing `@contract`, if present, otherwise initializes an instance of the
+          # contract defined on the class, and stores it as `@contract`.
           #
           # @return [Dry::Validation::Contract, nil]
+          #
           # @api private
           def contract
             return @contract if defined?(@contract)
@@ -41,10 +48,11 @@ module Dry
             @contract = self.class.contract_class&.new
           end
 
-          # Validates input against the resolved contract
+          # Validates the input using the operation's {#contract}.
           #
           # @param input [Hash] The input to validate
-          # @return [Dry::Monads::Result] Success with validated params or Failure with result
+          # @return [Dry::Monads::Result] Success with validated input, or Failure with result
+          #
           # @api private
           def validate(input)
             return Success(input) unless contract
@@ -59,18 +67,23 @@ module Dry
           end
         end
 
+        # @api public
+        # @since 1.2.0
         module ClassMethods
           # @api private
           attr_reader :contract_class
 
-          # Define validation rules using params DSL (includes coercion)
+          # Defines a validation contract using the full contract DSL.
           #
           # @param klass [Class, nil] A Dry::Validation::Contract subclass to use
-          # @yield Block for defining params validation rules
+          # @yield Block for defining contract rules
           # @return [void]
-          def params(klass = nil, &block)
+          #
+          # @api public
+          # @since 1.2.0
+          def contract(klass = nil, &block)
             if klass.nil?
-              klass = Class.new(Dry::Validation::Contract) { params(&block) }
+              klass = Class.new(Dry::Validation::Contract, &block)
               const_set(CONTRACT_CLASS_NAME, klass)
             end
 
@@ -78,7 +91,7 @@ module Dry
             _apply_validation
           end
 
-          # Define validation rules using schema DSL (strict types, no coercion)
+          # Defines a validation contract using the schema DSL only.
           #
           # @param klass [Class, nil] A Dry::Validation::Contract subclass to use
           # @yield Block for defining schema validation rules
@@ -93,14 +106,17 @@ module Dry
             _apply_validation
           end
 
-          # Define validation rules using full contract DSL
+          # Defines a validation contract using the params schema DSL only.
           #
           # @param klass [Class, nil] A Dry::Validation::Contract subclass to use
-          # @yield Block for defining contract rules
+          # @yield Block for defining params validation rules
           # @return [void]
-          def contract(klass = nil, &block)
+          #
+          # @api public
+          # @since 1.2.0
+          def params(klass = nil, &block)
             if klass.nil?
-              klass = Class.new(Dry::Validation::Contract, &block)
+              klass = Class.new(Dry::Validation::Contract) { params(&block) }
               const_set(CONTRACT_CLASS_NAME, klass)
             end
 
@@ -110,7 +126,6 @@ module Dry
 
           private
 
-          # @api private
           def method_added(method_name)
             return unless @_prepend_manager.registered_methods.include?(method_name)
 
@@ -118,7 +133,6 @@ module Dry
             super
           end
 
-          # @api private
           def inherited(subclass)
             super
 
@@ -173,9 +187,9 @@ module Dry
                 validated_input = validation_result.value!
 
                 if use_kwargs
-                  # Ensure named kwargs from the wrapped method are still passed through, even if
-                  # not included in the validation output. This is important for kwargs that exist
-                  # for the method's own logic, outside of the scope of validatable input.
+                  # Ensure named kwargs from the wrapped method are still passed through even if
+                  # they are not in the validation output. This is important for kwargs that exist
+                  # to serve the method's own logic, separate to the scope of validatable input.
                   named_kwargs ||= find_named_kwargs.call(method(__method__).super_method)
                   passthrough_keys = actual_input
                     .slice(*named_kwargs)
