@@ -85,4 +85,47 @@ RSpec.describe Dry::Operation::Extensions::Validation do
       expect(result).to eq(Success(name: "John"))
     end
   end
+
+  describe "ValidationStep ancestors" do
+    it "includes named ValidationStep modules in ancestors" do
+      klass = Class.new(Dry::Operation) do
+        include Dry::Operation::Extensions::Validation
+
+        params do
+          required(:name).filled(:string)
+        end
+
+        def call(input)
+          input
+        end
+      end
+
+      ancestor_names = klass.ancestors.map(&:name)
+      expect(ancestor_names).to include("Dry::Operation::Extensions::Validation::ValidationStep[call]")
+    end
+
+    it "includes ValidationStep for custom methods via operate_on" do
+      klass = Class.new(Dry::Operation) do
+        include Dry::Operation::Extensions::Validation
+
+        operate_on :process, :transform
+
+        params do
+          required(:value).filled(:string)
+        end
+
+        def process(input)
+          input
+        end
+
+        def transform(input)
+          input
+        end
+      end
+
+      ancestor_names = klass.ancestors.map(&:name)
+      expect(ancestor_names).to include("Dry::Operation::Extensions::Validation::ValidationStep[process]")
+      expect(ancestor_names).to include("Dry::Operation::Extensions::Validation::ValidationStep[transform]")
+    end
+  end
 end
