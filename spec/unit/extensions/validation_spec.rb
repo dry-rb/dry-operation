@@ -5,6 +5,96 @@ require "spec_helper"
 RSpec.describe Dry::Operation::Extensions::Validation do
   include Dry::Monads[:result]
 
+  describe ".contract" do
+    it "creates a Contract class with contract validation" do
+      klass = Class.new(Dry::Operation) do
+        include Dry::Operation::Extensions::Validation
+
+        contract do
+          params do
+            required(:name).filled(:string)
+          end
+
+          rule(:name) do
+            key.failure("must be uppercase") unless value.upcase == value
+          end
+        end
+      end
+
+      expect(klass.contract_class).to be_a(Class)
+      expect(klass.contract_class.superclass).to eq(Dry::Validation::Contract)
+    end
+
+    it "accepts a pre-built Contract class" do
+      contract_class = Class.new(Dry::Validation::Contract) do
+        params do
+          required(:name).filled(:string)
+        end
+      end
+
+      klass = Class.new(Dry::Operation) do
+        include Dry::Operation::Extensions::Validation
+
+        contract contract_class
+      end
+
+      expect(klass.contract_class).to eq(contract_class)
+    end
+  end
+
+  describe ".schema" do
+    it "creates a Contract class with schema validation (no coercion)" do
+      klass = Class.new(Dry::Operation) do
+        include Dry::Operation::Extensions::Validation
+
+        schema do
+          required(:name).filled(:string)
+        end
+      end
+
+      expect(klass.contract_class).to be_a(Class)
+      expect(klass.contract_class.superclass).to eq(Dry::Validation::Contract)
+    end
+
+    it "accepts a pre-built Contract class" do
+      contract_class = Class.new(Dry::Validation::Contract) do
+        schema do
+          required(:name).filled(:string)
+        end
+      end
+
+      klass = Class.new(Dry::Operation) do
+        include Dry::Operation::Extensions::Validation
+
+        schema contract_class
+      end
+
+      expect(klass.contract_class).to eq(contract_class)
+    end
+
+    it "does not coerce values" do
+      klass = Class.new(Dry::Operation) do
+        include Dry::Operation::Extensions::Validation
+
+        schema do
+          required(:age).filled(:integer)
+        end
+
+        def call(input)
+          input
+        end
+      end
+
+      instance = klass.new
+      result = instance.call(age: "25")
+
+      expect(result).to be_a(Dry::Monads::Failure)
+      failure_type, validation_result = result.failure
+      expect(failure_type).to eq(:invalid)
+      expect(validation_result.errors.to_h[:age]).to be_present
+    end
+  end
+
   describe ".params" do
     it "creates a Contract class with params validation" do
       klass = Class.new(Dry::Operation) do
@@ -65,96 +155,6 @@ RSpec.describe Dry::Operation::Extensions::Validation do
       end
 
       expect(child.contract_class).not_to eq(parent.contract_class)
-    end
-  end
-
-  describe ".schema" do
-    it "creates a Contract class with schema validation (no coercion)" do
-      klass = Class.new(Dry::Operation) do
-        include Dry::Operation::Extensions::Validation
-
-        schema do
-          required(:name).filled(:string)
-        end
-      end
-
-      expect(klass.contract_class).to be_a(Class)
-      expect(klass.contract_class.superclass).to eq(Dry::Validation::Contract)
-    end
-
-    it "accepts a pre-built Contract class" do
-      contract_class = Class.new(Dry::Validation::Contract) do
-        schema do
-          required(:name).filled(:string)
-        end
-      end
-
-      klass = Class.new(Dry::Operation) do
-        include Dry::Operation::Extensions::Validation
-
-        schema contract_class
-      end
-
-      expect(klass.contract_class).to eq(contract_class)
-    end
-
-    it "does not coerce values" do
-      klass = Class.new(Dry::Operation) do
-        include Dry::Operation::Extensions::Validation
-
-        schema do
-          required(:age).filled(:integer)
-        end
-
-        def call(input)
-          input
-        end
-      end
-
-      instance = klass.new
-      result = instance.call(age: "25")
-
-      expect(result).to be_a(Dry::Monads::Failure)
-      failure_type, validation_result = result.failure
-      expect(failure_type).to eq(:invalid)
-      expect(validation_result.errors.to_h[:age]).to be_present
-    end
-  end
-
-  describe ".contract" do
-    it "creates a Contract class with contract validation" do
-      klass = Class.new(Dry::Operation) do
-        include Dry::Operation::Extensions::Validation
-
-        contract do
-          params do
-            required(:name).filled(:string)
-          end
-
-          rule(:name) do
-            key.failure("must be uppercase") unless value.upcase == value
-          end
-        end
-      end
-
-      expect(klass.contract_class).to be_a(Class)
-      expect(klass.contract_class.superclass).to eq(Dry::Validation::Contract)
-    end
-
-    it "accepts a pre-built Contract class" do
-      contract_class = Class.new(Dry::Validation::Contract) do
-        params do
-          required(:name).filled(:string)
-        end
-      end
-
-      klass = Class.new(Dry::Operation) do
-        include Dry::Operation::Extensions::Validation
-
-        contract contract_class
-      end
-
-      expect(klass.contract_class).to eq(contract_class)
     end
   end
 
