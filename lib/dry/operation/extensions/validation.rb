@@ -93,14 +93,13 @@ module Dry
 
           # Defines a validation contract using the schema DSL only.
           #
-          # @param klass [Class, nil] A Dry::Validation::Contract subclass to use
           # @yield Block for defining schema validation rules
           # @return [void]
-          def schema(klass = nil, &block)
-            if klass.nil?
-              klass = Class.new(Dry::Validation::Contract) { schema(&block) }
-              const_set(CONTRACT_CLASS_NAME, klass)
-            end
+          def schema(&block)
+            raise ArgumentError, "schema requires a block" unless block_given?
+
+            klass = Class.new(Dry::Validation::Contract) { schema(&block) }
+            const_set(CONTRACT_CLASS_NAME, klass)
 
             @contract_class = klass
             _apply_validation
@@ -108,17 +107,16 @@ module Dry
 
           # Defines a validation contract using the params schema DSL only.
           #
-          # @param klass [Class, nil] A Dry::Validation::Contract subclass to use
           # @yield Block for defining params validation rules
           # @return [void]
           #
           # @api public
           # @since 1.2.0
-          def params(klass = nil, &block)
-            if klass.nil?
-              klass = Class.new(Dry::Validation::Contract) { params(&block) }
-              const_set(CONTRACT_CLASS_NAME, klass)
-            end
+          def params(&block)
+            raise ArgumentError, "params requires a block" unless block_given?
+
+            klass = Class.new(Dry::Validation::Contract) { params(&block) }
+            const_set(CONTRACT_CLASS_NAME, klass)
 
             @contract_class = klass
             _apply_validation

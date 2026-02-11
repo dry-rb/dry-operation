@@ -228,7 +228,7 @@ RSpec.describe Dry::Operation::Extensions::Validation do
       create_user = Class.new(Dry::Operation) do
         include Dry::Operation::Extensions::Validation
 
-        params user_contract
+        contract user_contract
 
         def call(input)
           input
@@ -255,7 +255,7 @@ RSpec.describe Dry::Operation::Extensions::Validation do
       audit_operation = Class.new(Dry::Operation) do
         include Dry::Operation::Extensions::Validation
 
-        params shared_contract
+        contract shared_contract
 
         def call(input)
           "Audited: #{input[:action]} by user #{input[:user_id]}"
@@ -265,7 +265,7 @@ RSpec.describe Dry::Operation::Extensions::Validation do
       log_operation = Class.new(Dry::Operation) do
         include Dry::Operation::Extensions::Validation
 
-        params shared_contract
+        contract shared_contract
 
         def call(input)
           "Logged: #{input[:action]} by user #{input[:user_id]}"

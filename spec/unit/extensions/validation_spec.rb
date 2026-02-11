@@ -56,22 +56,6 @@ RSpec.describe Dry::Operation::Extensions::Validation do
       expect(klass.contract_class.superclass).to eq(Dry::Validation::Contract)
     end
 
-    it "accepts a pre-built Contract class" do
-      contract_class = Class.new(Dry::Validation::Contract) do
-        schema do
-          required(:name).filled(:string)
-        end
-      end
-
-      klass = Class.new(Dry::Operation) do
-        include Dry::Operation::Extensions::Validation
-
-        schema contract_class
-      end
-
-      expect(klass.contract_class).to eq(contract_class)
-    end
-
     it "does not coerce values" do
       klass = Class.new(Dry::Operation) do
         include Dry::Operation::Extensions::Validation
@@ -107,22 +91,6 @@ RSpec.describe Dry::Operation::Extensions::Validation do
 
       expect(klass.contract_class).to be_a(Class)
       expect(klass.contract_class.superclass).to eq(Dry::Validation::Contract)
-    end
-
-    it "accepts a pre-built Contract class" do
-      contract_class = Class.new(Dry::Validation::Contract) do
-        params do
-          required(:name).filled(:string)
-        end
-      end
-
-      klass = Class.new(Dry::Operation) do
-        include Dry::Operation::Extensions::Validation
-
-        params contract_class
-      end
-
-      expect(klass.contract_class).to eq(contract_class)
     end
 
     it "allows contract class to be inherited by subclasses" do
@@ -272,34 +240,6 @@ RSpec.describe Dry::Operation::Extensions::Validation do
 
       result = instance.send(:validate, name: "")
       expect(result).to be_a(Dry::Monads::Failure)
-    end
-
-    it "lazily instantiates the contract" do
-      instantiated = false
-
-      contract_class = Class.new(Dry::Validation::Contract) do
-        params do
-          required(:name).filled(:string)
-        end
-
-        define_method(:initialize) do |*args|
-          instantiated = true
-          super(*args)
-        end
-      end
-
-      klass = Class.new(Dry::Operation) do
-        include Dry::Operation::Extensions::Validation
-
-        params contract_class
-      end
-
-      expect(instantiated).to be(false)
-
-      instance = klass.new
-      instance.send(:validate, name: "John")
-
-      expect(instantiated).to be(true)
     end
   end
 
