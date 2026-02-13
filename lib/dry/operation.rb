@@ -165,9 +165,7 @@ module Dry
     # @return [Object] wrapped value
     # @see #steps
     def step(result)
-      if !result.is_a?(Dry::Monads::Result) && result.respond_to?(:to_result)
-        result = result.to_result
-      end
+      result = result.to_result
 
       if result.is_a?(Dry::Monads::Result)
         result.value_or { throw_failure(result) }
