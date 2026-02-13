@@ -38,8 +38,7 @@ module Dry
     class InvalidStepResultError < Error
       def initialize(result:)
         super <<~MSG
-          Your step must return `Success(..)` or `Failure(..)`, \
-          from `Dry::Monads::Result`. Instead, it was `#{result.inspect}`.
+          Your step must return `Success(..)` or `Failure(..)`, or an object with `.to_result`. Instead, it was `#{result.inspect}`.
         MSG
       end
     end

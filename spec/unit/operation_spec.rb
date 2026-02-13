@@ -61,8 +61,7 @@ RSpec.describe Dry::Operation do
       }.to raise_error(Dry::Operation::InvalidStepResultError)
         .with_message(
           <<~MSG
-            Your step must return `Success(..)` or `Failure(..)`, \
-            from `Dry::Monads::Result`. Instead, it was `123`.
+            Your step must return `Success(..)` or `Failure(..)`, or an object with `.to_result`. Instead, it was `123`.
           MSG
         )
     end
