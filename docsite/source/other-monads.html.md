@@ -4,9 +4,9 @@ layout: gem-single
 name: dry-operation
 ---
 
-While you typically return `Success` and `Failure` from operation steps, you can also use other monads from [Dry Monads](/gems/dry-monads), which will be automaically converted to `Result` when they're passed to `step`.
+While you typically return `Success` and `Failure` from operation steps, you can also use other monads from [Dry Monads](/gems/dry-monads), which will be automatically converted to `Result` when they're passed to `step`.
 
-### Try for exception handling
+### `Try` for exception handling
 
 The `Try` monad is useful for wrapping code that may raise exceptions. When used with `#step`, any caught exception becomes a `Failure`:
 
@@ -33,7 +33,7 @@ step Try[Errno::ENOENT, Errno::EACCES] { File.read(file_path) }
 
 [Learn more about Try](/dry-monads/1.6/try/).
 
-### Maybe for nil handling
+### `Maybe` for nil handling
 
 The `Maybe` monad converts `nil` values to `None` and non-nil values to `Some`. These become `Failure` and `Success` respectively when converted to a `Result`.
 
@@ -62,7 +62,7 @@ end
 
 [Learn more about Maybe](/dry-monads/1.6/maybe/).
 
-### Validated for validation with error accumulation
+### `Validated` for validation with error accumulation
 
 The `Validated` monad is useful when you want to accumulate multiple validation errors instead of failing on the first one.
 
@@ -122,4 +122,4 @@ The `Result` monad is always available through the `Success` and `Failure` const
 
 ### Result conversion via `#to_result`
 
-The `step` method calls `#to_result` on any object given to it, expecting a `Dry::Monads::Success` or `Dry::Monads::Failure` in return. Implement this protocol on your own objects to make them compatible with steps.
+The `step` method calls `#to_result` on any object given to it, expecting a `Dry::Monads::Success` or `Dry::Monads::Failure` (or any other object responding to `.value_or`) in return. Implement this protocol on your own objects to make them compatible with steps.
