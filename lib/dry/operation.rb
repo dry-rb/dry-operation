@@ -159,15 +159,16 @@ module Dry
     #
     # Throws `:halt` with a {Dry::Monads::Result::Failure} on failure.
     #
-    # @param result [Dry::Monads::Result]
+    # If the given result responds to `#to_result`, this will be called before processing.
+    #
+    # @param result [Dry::Monads::Result, #to_result]
     # @return [Object] wrapped value
     # @see #steps
     def step(result)
-      if result.is_a?(Dry::Monads::Result)
-        result.value_or { throw_failure(result) }
-      else
-        raise InvalidStepResultError.new(result: result)
-      end
+      raise InvalidStepResultError.new(result: result) unless result.respond_to?(:to_result)
+
+      result = result.to_result
+      result.value_or { throw_failure(result) }
     end
 
     # Invokes a callable in case of block's failure

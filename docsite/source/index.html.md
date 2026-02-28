@@ -8,6 +8,7 @@ sections:
   - configuration
   - extensions
   - design-pattern
+  - other-monads
 ---
 
 dry-operation provides an expressive and flexible way for you to model your app's business operations. It provides a lightweight DSL around [dry-monads](/gems/dry-monads/), which allows you to chain together steps and operations with a focus on the happy path, while elegantly handling failures.

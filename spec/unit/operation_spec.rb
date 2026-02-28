@@ -61,10 +61,31 @@ RSpec.describe Dry::Operation do
       }.to raise_error(Dry::Operation::InvalidStepResultError)
         .with_message(
           <<~MSG
-            Your step must return `Success(..)` or `Failure(..)`, \
-            from `Dry::Monads::Result`. Instead, it was `123`.
+            Your step must return `Success(..)`, `Failure(..)`, or an object with `.to_result`. Instead, it was `123`.
           MSG
         )
+    end
+
+    it "converts objects by calling #to_result" do
+      convertable_success = Class.new do
+        def to_result
+          Dry::Monads::Success(:converted)
+        end
+      end.new
+
+      expect(described_class.new.step(convertable_success)).to eq(:converted)
+    end
+
+    it "converts objects with #to_result returning Failure" do
+      convertable_failure = Class.new do
+        def to_result
+          Dry::Monads::Failure(:error)
+        end
+      end.new
+
+      failure = Failure(:error)
+
+      expect { described_class.new.step(convertable_failure) }.to throw_symbol(:halt, failure)
     end
   end
 
