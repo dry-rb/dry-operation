@@ -165,11 +165,9 @@ module Dry
     # @return [Object] wrapped value
     # @see #steps
     def step(result)
-      result = result.to_result if result.respond_to?(:to_result)
+      raise InvalidStepResultError.new(result: result) unless result.respond_to?(:to_result)
 
-      raise InvalidStepResultError.new(result: result) unless result.is_a?(Dry::Monads::Result)
-
-      result.value_or { throw_failure(result) }
+      result.to_result.value_or { throw_failure(result) }
     end
 
     # Invokes a callable in case of block's failure
