@@ -167,7 +167,8 @@ module Dry
     def step(result)
       raise InvalidStepResultError.new(result: result) unless result.respond_to?(:to_result)
 
-      result.to_result.value_or { throw_failure(result) }
+      result = result.to_result
+      result.value_or { throw_failure(result) }
     end
 
     # Invokes a callable in case of block's failure
