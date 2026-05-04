@@ -28,7 +28,7 @@ Gem::Specification.new do |spec|
   spec.metadata["bug_tracker_uri"]   = "https://github.com/dry-rb/dry-operation/issues"
   spec.metadata["funding_uri"]       = "https://github.com/sponsors/hanami"
 
-  spec.required_ruby_version = ">= 3.1.0"
+  spec.required_ruby_version = ">= 3.3"
 
   spec.add_runtime_dependency "dry-monads", "~> 1.6"
   spec.add_runtime_dependency "zeitwerk", "~> 2.6"
