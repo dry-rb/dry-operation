@@ -15,6 +15,10 @@ module Dry
       # `params`, `schema`, or `contract`, or make a `#contract` dependency available from your
       # operation instance.
       #
+      # When validation fails, `#on_failure` receives `:validation` via the
+      # `step_name:` kwarg (if accepted), distinguishing contract failures from any
+      # other named steps in the flow.
+      #
       # @see https://dry-rb.org/gems/dry-validation/
       #
       # @api public
@@ -199,7 +203,7 @@ module Dry
                   super(validated_input, *rest, **kwargs, &block)
                 end
               when Dry::Monads::Failure
-                throw_failure(validation_result)
+                throw_failure(validation_result, step_name: :validation)
               end
             end
           end
