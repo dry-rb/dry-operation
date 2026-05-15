@@ -9,7 +9,13 @@ and this project adheres to [Break Versioning](https://www.taoensso.com/break-ve
 
 ### Added
 
+- `#step` now accepts an optional step name as its first argument (e.g. `step :validate, validate(input)`). When given, the name is forwarded to `#on_failure` via a new `step_name:` kwarg if the step fails, so a single `on_failure` hook can branch on which step failed. (@timriley in #42)
+- `#on_failure` now supports `step_name:` and `method_name:` keyword arguments. Hooks can opt in to either or both — e.g. `def on_failure(failure, step_name:)`, `def on_failure(failure, method_name:)`, or `def on_failure(failure, step_name:, method_name:)`. The existing positional params signatures are unchanged: `def on_failure(failure)` and `def on_failure(failure, method_name)`. (@timriley in #42)
+
 ### Changed
+
+- `#steps` now dispatches to `#on_failure` itself, so users who use `skip_prepending` and call `steps do ... end` manually get the same `#on_failure` routing as the auto-prepended case. Previously `#on_failure` only fired via the prepender. (@timriley in #42)
+- The Validation extension forwards `:validation` via the `step_name:` kwarg to `#on_failure` when contract validation fails, so users can distinguish contract failures from other named steps. (@timriley in #42)
 
 ### Deprecated
 

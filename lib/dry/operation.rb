@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "zeitwerk"
+require "dry/core/constants"
 require "dry/monads"
 require "dry/operation/errors"
 
@@ -74,28 +75,38 @@ module Dry
   # As you can see, the aforementioned behavior allows you to write your flow
   # in a linear fashion. Failures are mostly handled locally by each individual
   # operation. However, you can also define a global failure handler by defining
-  # an `#on_failure` method. It will be called with the wrapped failure value
-  # and, in the case of accepting a second argument, the name of the method that
-  # defined the flow:
+  # an `#on_failure` method. It will always be called with the wrapped failure
+  # value as its first argument, and may optionally accept either a positional
+  # second argument (the prepended method name) or `step_name:` and/or
+  # `method_name:` keyword arguments:
   #
   # ```ruby
   # class MyOperation < Dry::Operation
   #   def call(input)
-  #     attrs = step validate(input)
-  #     user = step persist(attrs)
-  #     step notify(user)
+  #     attrs = step :validate, validate(input)
+  #     user = step :persist, persist(attrs)
+  #     step :notify, notify(user)
   #     user
   #   end
   #
-  #   def on_failure(user) # or def on_failure(failure_value, method_name)
-  #     log_failure(user)
+  #   def on_failure(failure_value, step_name:)
+  #     case step_name
+  #     when :validate then log_validation_failure(failure_value)
+  #     when :persist then log_persistence_failure(failure_value)
+  #     when :notify then log_notification_failure(failure_value)
+  #     end
   #   end
   # end
   # ```
   #
+  # Naming steps is optional. When {#step} is called with just a result,
+  # `step_name:` will be `nil`. The `method_name:` kwarg always reflects the
+  # prepended method name (`:call` by default).
+  #
   # You can opt out altogether of this behavior via {ClassContext#skip_prepending}. If so,
-  # you manually need to wrap your flow within the {#steps} method and manually
-  # handle global failures.
+  # you manually need to wrap your flow within the {#steps} method.
+  # `#on_failure` is still dispatched by `#steps` itself, so it works the same
+  # as in the prepended case:
   #
   # ```ruby
   # class MyOperation < Dry::Operation
@@ -103,16 +114,16 @@ module Dry
   #
   #   def call(input)
   #     steps do
-  #       attrs = step validate(input)
-  #       user = step persist(attrs)
-  #       step notify(user)
+  #       attrs = step :validate, validate(input)
+  #       user  = step :persist, persist(attrs)
+  #       step :notify, notify(user)
   #       user
-  #     end.tap do |result|
-  #       log_failure(result.failure) if result.failure?
   #     end
   #   end
   #
-  #   # ...
+  #   def on_failure(failure, step_name:)
+  #     log_failure(failure, step_name)
+  #   end
   # end
   # ```
   #
@@ -138,21 +149,54 @@ module Dry
     end
     loader.setup
 
+    # @api private
     FAILURE_TAG = :halt
-    private_constant :FAILURE_TAG
+
+    # @api private
+    Undefined = Dry::Core::Constants::Undefined
+
+    # Internal throw payload pairing a failure with the name of the step that
+    # produced it. Used so the step name can flow back to `#on_failure`.
+    #
+    # @api private
+    StepFailure = Data.define(:failure, :step_name)
 
     extend ClassContext
     include Dry::Monads::Result::Mixin
 
     # Wraps block's return value in a {Dry::Monads::Result::Success}
     #
-    # Catches `:halt` and returns it
+    # Catches `:halt`, unwraps any step name carried by the throw, and
+    # dispatches the failure (if any) to `#on_failure`.
     #
+    # The prepender passes its `__method__` as `method_name:` so it flows to
+    # `#on_failure`'s `method_name:` kwarg. Manual callers (e.g. with
+    # {ClassContext#skip_prepending}) can pass it themselves; otherwise the
+    # `method_name:` kwarg arrives as `nil`.
+    #
+    # @param method_name [Symbol, nil] surfaced to `#on_failure` via `method_name:` on failure
     # @yieldreturn [Object]
-    # @return [Dry::Monads::Result::Success]
+    # @return [Dry::Monads::Result::Success, Object] the wrapped block result, or
+    #   the unwrapped failure / direct-throw value
     # @see #step
-    def steps(&block)
-      catching_failure { Success(block.call) }
+    def steps(method_name: nil, &block)
+      output = catch(FAILURE_TAG) { Success(block.call) }
+
+      result, step_name =
+        if output.is_a?(StepFailure)
+          [output.failure, output.step_name]
+        else
+          [output, nil]
+        end
+
+      ClassContext::FailureHookDispatcher.call(
+        self,
+        method_name: method_name,
+        step_name: step_name,
+        result: result
+      )
+
+      result
     end
 
     # Unwraps a {Dry::Monads::Result::Success}
@@ -161,14 +205,37 @@ module Dry
     #
     # If the given result responds to `#to_result`, this will be called before processing.
     #
-    # @param result [Dry::Monads::Result, #to_result]
+    # Optionally accepts a step name as the first argument. When given, the name is
+    # forwarded to `#on_failure` via the `step_name:` kwarg if the step fails.
+    #
+    # ```ruby
+    # def call(input)
+    #   attrs = step :validate, validate(input)
+    #   user  = step :persist, persist(attrs)
+    #   step :notify, notify(user)
+    #   user
+    # end
+    # ```
+    #
+    # @overload step(result)
+    #   @param result [Dry::Monads::Result, #to_result]
+    # @overload step(name, result)
+    #   @param name [Symbol] identifier surfaced to `#on_failure` via `step_name:` on failure
+    #   @param result [Dry::Monads::Result, #to_result]
     # @return [Object] wrapped value
     # @see #steps
-    def step(result)
+    def step(name_or_result, result = Undefined)
+      if Undefined.equal?(result)
+        step_name = nil
+        result = name_or_result
+      else
+        step_name = name_or_result
+      end
+
       raise InvalidStepResultError.new(result: result) unless result.respond_to?(:to_result)
 
       result = result.to_result
-      result.value_or { throw_failure(result) }
+      result.value_or { throw_failure(result, step_name:) }
     end
 
     # Invokes a callable in case of block's failure
@@ -196,14 +263,16 @@ module Dry
     # Throws `:halt` with a failure
     #
     # @param failure [Dry::Monads::Result::Failure]
-    def throw_failure(failure)
-      throw FAILURE_TAG, failure
+    # @param step_name [Symbol, nil] surfaced to `#on_failure` if set
+    def throw_failure(failure, step_name: nil)
+      throw FAILURE_TAG, StepFailure.new(failure, step_name)
     end
 
     private
 
     def catching_failure(&block)
-      catch(FAILURE_TAG, &block)
+      output = catch(FAILURE_TAG, &block)
+      output.is_a?(StepFailure) ? output.failure : output
     end
   end
 end
