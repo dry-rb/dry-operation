@@ -155,7 +155,121 @@ RSpec.describe "Operations" do
       ).to be(:call)
     end
 
-    it "has its arity checked and a meaningful error is raised when not conforming" do
+    it "is given the step name via the step_name: kwarg" do
+      klass = Class.new(Dry::Operation) do
+        attr_reader :received
+
+        def initialize
+          super
+          @received = nil
+        end
+
+        def call(x)
+          step :validate, validate(x)
+          step :persist, persist(x)
+        end
+
+        def validate(_x) = Success(:ok)
+        def persist(_x) = Failure(:db_error)
+
+        def on_failure(_failure, step_name:)
+          @received = step_name
+        end
+      end
+      instance = klass.new
+
+      instance.(1)
+
+      expect(
+        instance.received
+      ).to be(:persist)
+    end
+
+    it "passes nil for step_name: when an unnamed step fails" do
+      klass = Class.new(Dry::Operation) do
+        attr_reader :received
+
+        def initialize
+          super
+          @received = nil
+        end
+
+        def call(x)
+          step persist(x)
+        end
+
+        def persist(_x) = Failure(:db_error)
+
+        def on_failure(_failure, step_name:)
+          @received = step_name
+        end
+      end
+      instance = klass.new
+
+      instance.(1)
+
+      expect(
+        instance.received
+      ).to be_nil
+    end
+
+    it "is given the prepended method name via the method_name: kwarg" do
+      klass = Class.new(Dry::Operation) do
+        attr_reader :received
+
+        def initialize
+          super
+          @received = nil
+        end
+
+        def call(x)
+          step :persist, persist(x)
+        end
+
+        def persist(_x) = Failure(:db_error)
+
+        def on_failure(_failure, method_name:)
+          @received = method_name
+        end
+      end
+      instance = klass.new
+
+      instance.(1)
+
+      expect(
+        instance.received
+      ).to be(:call)
+    end
+
+    it "is given both names when both kwargs are accepted" do
+      klass = Class.new(Dry::Operation) do
+        attr_reader :received
+
+        def initialize
+          super
+          @received = nil
+        end
+
+        def call(x)
+          step :persist, persist(x)
+        end
+
+        def persist(_x) = Failure(:db_error)
+
+        def on_failure(_failure, step_name:, method_name:)
+          @received = {step_name: step_name, method_name: method_name}
+        end
+      end
+      instance = klass.new
+
+      instance.(1)
+
+      expect(
+        instance.received
+      ).to eq(step_name: :persist, method_name: :call)
+    end
+
+    it "raises a meaningful error when its signature is not supported" do
       klass = Class.new(Dry::Operation) do
         def call(x)
           step divide_by_zero(x)
@@ -167,6 +281,34 @@ RSpec.describe "Operations" do
       end
 
       expect { klass.new.(1) }.to raise_error(Dry::Operation::FailureHookArityError, /arity is 3/)
+    end
+
+    it "raises an error when arity-2 positional is mixed with kwargs" do
+      klass = Class.new(Dry::Operation) do
+        def call(x)
+          step divide_by_zero(x)
+        end
+
+        def divide_by_zero(_x) = Failure(:not_possible)
+
+        def on_failure(_failure, _name, step_name:); end
+      end
+
+      expect { klass.new.(1) }.to raise_error(Dry::Operation::FailureHookArityError)
+    end
+
+    it "raises an error for unrecognised kwargs" do
+      klass = Class.new(Dry::Operation) do
+        def call(x)
+          step divide_by_zero(x)
+        end
+
+        def divide_by_zero(_x) = Failure(:not_possible)
+
+        def on_failure(_failure, what:); end
+      end
+
+      expect { klass.new.(1) }.to raise_error(Dry::Operation::FailureHookArityError)
     end
 
     it "can be defined in a parent class" do
@@ -429,6 +571,30 @@ RSpec.describe "Operations" do
       expect(
         klass.new.(1)
       ).to eq(Success(2))
+    end
+
+    it "still dispatches to #on_failure from inside a manual #steps block" do
+      received = nil
+
+      klass = Class.new(Dry::Operation) do
+        skip_prepending
+
+        def call(x)
+          steps do
+            step :persist, persist(x)
+          end
+        end
+
+        def persist(_x) = Failure(:db_error)
+
+        define_method(:on_failure) do |_failure, step_name:|
+          received = step_name
+        end
+      end
+
+      klass.new.(1)
+
+      expect(received).to be(:persist)
     end
   end
 end

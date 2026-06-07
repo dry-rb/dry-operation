@@ -46,12 +46,17 @@ module Dry
     # An error related to an extension
     class ExtensionError < ::StandardError; end
 
-    # Defined failure hook has wrong arity
+    # Defined failure hook has an unsupported signature
     class FailureHookArityError < ::StandardError
       def initialize(hook:)
         super <<~MSG
-          ##{hook.name} must accept 1 (failure) or 2 (failure, method name) \
-          arguments, but its arity is #{hook.arity}
+          ##{hook.name} must accept one of the following signatures:
+            (failure)
+            (failure, method_name)
+            (failure, step_name:)
+            (failure, method_name:)
+            (failure, step_name:, method_name:)
+          Its arity is #{hook.arity}.
         MSG
       end
     end

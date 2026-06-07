@@ -47,12 +47,18 @@ RSpec.describe Dry::Operation do
       ).to eq([:foo])
     end
 
-    it "throws :halt with the result when given a failure" do
-      failure = Failure(:foo)
-
+    it "throws :halt when given a failure" do
       expect {
-        described_class.new.step(failure)
-      }.to throw_symbol(:halt, failure)
+        described_class.new.step(Failure(:foo))
+      }.to throw_symbol(:halt)
+    end
+
+    it "accepts an optional step name as the first argument" do
+      instance = described_class.new
+
+      expect(
+        instance.step(:my_step, Success(:foo))
+      ).to be(:foo)
     end
 
     it "raises helpful error when returning something that is not a Result" do
@@ -83,9 +89,7 @@ RSpec.describe Dry::Operation do
         end
       end.new
 
-      failure = Failure(:error)
-
-      expect { described_class.new.step(convertable_failure) }.to throw_symbol(:halt, failure)
+      expect { described_class.new.step(convertable_failure) }.to throw_symbol(:halt)
     end
   end
 
@@ -118,12 +122,10 @@ RSpec.describe Dry::Operation do
   end
 
   describe "#throw_failure" do
-    it "throws :halt with the failure" do
-      failure = Failure(:foo)
-
+    it "throws :halt" do
       expect {
-        described_class.new.throw_failure(failure)
-      }.to throw_symbol(:halt, failure)
+        described_class.new.throw_failure(Failure(:foo))
+      }.to throw_symbol(:halt)
     end
   end
 end

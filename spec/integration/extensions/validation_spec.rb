@@ -73,6 +73,30 @@ RSpec.describe Dry::Operation::Extensions::Validation do
       expect(executed_steps).to be_empty
     end
 
+    it "passes :validation via the step_name: kwarg to #on_failure" do
+      received = nil
+
+      create_user = Class.new(Dry::Operation) do
+        include Dry::Operation::Extensions::Validation
+
+        params do
+          required(:name).filled(:string)
+        end
+
+        def call(input)
+          Success(input)
+        end
+
+        define_method(:on_failure) do |_failure, step_name:|
+          received = step_name
+        end
+      end
+
+      create_user.new.call(name: "")
+
+      expect(received).to be(:validation)
+    end
+
     it "coerces input values according to params schema" do
       calculate = Class.new(Dry::Operation) do
         include Dry::Operation::Extensions::Validation

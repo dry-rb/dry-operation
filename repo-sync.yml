@@ -12,5 +12,6 @@ gemspec:
     - rspec
     - yard
   runtime_dependencies:
+    - [dry-core, "~> 1.1"]
     - [dry-monads, "~> 1.6"]
     - [zeitwerk, "~> 2.6"]
