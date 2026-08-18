@@ -375,6 +375,127 @@ RSpec.describe Dry::Operation::Extensions::Validation do
     end
   end
 
+  describe "operations without an input object" do
+    it "calls a method taking no arguments when no contract is defined" do
+      operation = Class.new(Dry::Operation) do
+        include Dry::Operation::Extensions::Validation
+
+        def call
+          step build_thing
+        end
+
+        private
+
+        def build_thing
+          Success(:thing)
+        end
+      end
+
+      expect(operation.new.call).to eq(Success(:thing))
+    end
+
+    it "forwards arguments untouched when no contract is defined" do
+      operation = Class.new(Dry::Operation) do
+        include Dry::Operation::Extensions::Validation
+
+        def call(input, extra: nil)
+          [input, extra]
+        end
+      end
+
+      expect(operation.new.call(:input, extra: :extra)).to eq(Success([:input, :extra]))
+    end
+
+    it "raises when a contract is defined before a method taking no arguments" do
+      expect {
+        Class.new(Dry::Operation) do
+          include Dry::Operation::Extensions::Validation
+
+          params do
+            required(:name).filled(:string)
+          end
+
+          def call
+            Success(:thing)
+          end
+        end
+      }.to raise_error(Dry::Operation::ValidationInputError, /#call must accept the input/)
+    end
+
+    it "raises when a contract is defined after a method taking no arguments" do
+      expect {
+        Class.new(Dry::Operation) do
+          include Dry::Operation::Extensions::Validation
+
+          def call
+            Success(:thing)
+          end
+
+          params do
+            required(:name).filled(:string)
+          end
+        end
+      }.to raise_error(Dry::Operation::ValidationInputError, /#call must accept the input/)
+    end
+
+    it "raises when a subclass of an operation with a contract takes no arguments" do
+      parent = Class.new(Dry::Operation) do
+        include Dry::Operation::Extensions::Validation
+
+        params do
+          required(:name).filled(:string)
+        end
+      end
+
+      expect {
+        Class.new(parent) do
+          def call
+            Success(:thing)
+          end
+        end
+      }.to raise_error(Dry::Operation::ValidationInputError, /#call must accept the input/)
+    end
+
+    it "raises on call when an injected contract is given to a method taking no arguments" do
+      contract_class = Class.new(Dry::Validation::Contract) do
+        params { optional(:name).filled(:string) }
+      end
+
+      operation = Class.new(Dry::Operation) do
+        include Dry::Operation::Extensions::Validation
+
+        def initialize(contract:)
+          super()
+          @contract = contract
+        end
+
+        def call
+          Success(:thing)
+        end
+      end
+
+      expect { operation.new(contract: contract_class.new).call }
+        .to raise_error(Dry::Operation::ValidationInputError, /#call must accept the input/)
+    end
+
+    it "validates an empty input for a method taking only keyword arguments" do
+      operation = Class.new(Dry::Operation) do
+        include Dry::Operation::Extensions::Validation
+
+        params do
+          optional(:name).filled(:string)
+        end
+
+        def call(name: "anonymous")
+          name
+        end
+      end
+
+      expect(operation.new.call).to eq(Success("anonymous"))
+      expect(operation.new.call(name: "Alice")).to eq(Success("Alice"))
+    end
+  end
+
   describe "selective validation with unvalidated keys preserved" do
     it "preserves unvalidated named kwargs and coerces validated values" do
       calculate = Class.new(Dry::Operation) do

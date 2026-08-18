@@ -146,11 +146,80 @@ module Dry
             @_validated_methods ||= []
 
             method_names.each do |method_name|
+              _check_validation_signature(method_name)
+
               next if @_validated_methods.include?(method_name)
 
               prepend ValidationStep.new(method_name)
               @_validated_methods << method_name
             end
+          end
+
+          # Fails fast when a contract is defined for a method that can't receive its input.
+          def _check_validation_signature(method_name)
+            return unless contract_class
+            return unless method_defined?(method_name) || private_method_defined?(method_name)
+
+            method = Signature.unwrap(instance_method(method_name))
+
+            return if method.nil? || Signature.accepts_input?(method)
+
+            raise Dry::Operation::ValidationInputError.new(method: method_name)
+          end
+        end
+
+        # Reflection on the signature of the methods an operation wraps.
+        #
+        # @api private
+        module Signature
+          NAMED_KWARG_TYPES = %i[key keyreq].freeze
+
+          KWARG_TYPES = %i[key keyreq keyrest].freeze
+
+          POSITIONAL_TYPES = %i[req opt rest].freeze
+
+          FORWARDING_TYPES = %i[rest keyrest block].freeze
+
+          module_function
+
+          # Walks up the method chain to find the first method with named kwargs.
+          def named_kwargs(method)
+            while method
+              named_kwargs = method
+                .parameters
+                .select { |type, _| NAMED_KWARG_TYPES.include?(type) }
+                .map(&:last)
+
+              return named_kwargs if named_kwargs.any?
+
+              method = method.super_method
+            end
+
+            []
+          end
+
+          # Whether the method can take the input to validate, positionally or as kwargs.
+          def accepts_input?(method)
+            method.parameters.any? do |type, _|
+              POSITIONAL_TYPES.include?(type) || KWARG_TYPES.include?(type)
+            end
+          end
+
+          def accepts_positional_input?(method)
+            method.parameters.any? { |type, _| POSITIONAL_TYPES.include?(type) }
+          end
+
+          # Walks up the method chain past the generic wrappers that `Dry::Operation` prepends,
+          # to find the method declaring the signature the operation was defined with.
+          def unwrap(method)
+            method = method.super_method while method && forwarding?(method)
+            method
+          end
+
+          def forwarding?(method)
+            parameters = method.parameters
+
+            parameters.any? && parameters.all? { |type, _| FORWARDING_TYPES.include?(type) }
           end
         end
 
@@ -168,60 +237,60 @@ module Dry
 
           private
 
+          # rubocop:disable Metrics/AbcSize
+          # rubocop:disable Metrics/CyclomaticComplexity
           # rubocop:disable Metrics/PerceivedComplexity
           def define_validation_method
-            # Cache named kwargs outside the method closure so we only search for them once.
+            # Cache the reflection outside the method closure so we only perform it once.
             named_kwargs = nil
-            find_named_kwargs = method(:find_named_kwargs)
+            wrapped_method = nil
 
-            define_method(@method_name) do |input = {}, *rest, **kwargs, &block|
+            define_method(@method_name) do |*args, **kwargs, &block|
+              # Without a contract there's nothing to validate, so the arguments the method was
+              # called with are forwarded untouched.
+              return super(*args, **kwargs, &block) unless contract
+
+              wrapped_method ||= Signature.unwrap(method(__method__).super_method)
+
+              if wrapped_method && !Signature.accepts_input?(wrapped_method)
+                raise Dry::Operation::ValidationInputError.new(method: __method__)
+              end
+
+              input, *rest = args
+              input = {} if args.empty?
               use_kwargs = !kwargs.empty? && input.empty? && rest.empty?
-              actual_input = use_kwargs ? kwargs : input
 
-              validation_result = validate(actual_input)
+              validation_result = validate(use_kwargs ? kwargs : input)
+              throw_failure(validation_result) if validation_result.failure?
 
-              case validation_result
-              when Dry::Monads::Success
-                validated_input = validation_result.value!
+              validated_input = validation_result.value!
 
-                if use_kwargs
-                  # Ensure named kwargs from the wrapped method are still passed through even if
-                  # they are not in the validation output. This is important for kwargs that exist
-                  # to serve the method's own logic, separate to the scope of validatable input.
-                  named_kwargs ||= find_named_kwargs.call(method(__method__).super_method)
-                  passthrough_keys = actual_input
-                    .slice(*named_kwargs)
-                    .reject { |k, _| validated_input.key?(k) }
-                  validated_input = passthrough_keys.merge(validated_input)
+              if use_kwargs
+                # Ensure named kwargs from the wrapped method are still passed through even if
+                # they are not in the validation output. This is important for kwargs that exist
+                # to serve the method's own logic, separate to the scope of validatable input.
+                named_kwargs ||= Signature.named_kwargs(method(__method__).super_method)
+                passthrough_keys = kwargs
+                  .slice(*named_kwargs)
+                  .reject { |k, _| validated_input.key?(k) }
 
-                  super(**validated_input, &block)
+                super(**passthrough_keys.merge(validated_input), &block)
+              elsif args.empty? && kwargs.empty?
+                # The method was called without arguments, so pass the validated input along in
+                # whichever form the method accepts it.
+                if wrapped_method.nil? || Signature.accepts_positional_input?(wrapped_method)
+                  super(validated_input, &block)
                 else
-                  super(validated_input, *rest, **kwargs, &block)
+                  super(**validated_input, &block)
                 end
-              when Dry::Monads::Failure
-                throw_failure(validation_result)
+              else
+                super(validated_input, *rest, **kwargs, &block)
               end
             end
           end
+          # rubocop:enable Metrics/AbcSize
+          # rubocop:enable Metrics/CyclomaticComplexity
           # rubocop:enable Metrics/PerceivedComplexity
-
-          NAMED_KWARG_TYPES = %i[key keyreq].freeze
-
-          def find_named_kwargs(method)
-            # Walk up the method chain to find the first method with named kwargs.
-            while method
-              named_kwargs = method
-                .parameters
-                .select { |type, _| NAMED_KWARG_TYPES.include?(type) }
-                .map(&:last)
-
-              return named_kwargs if named_kwargs.any?
-
-              method = method.super_method
-            end
-
-            []
-          end
         end
       end
     end

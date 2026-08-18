@@ -46,6 +46,17 @@ module Dry
     # An error related to an extension
     class ExtensionError < ::StandardError; end
 
+    # An operation method can't receive the input to validate
+    class ValidationInputError < ExtensionError
+      def initialize(method:)
+        super <<~MSG
+          ##{method} must accept the input to validate, but it accepts no arguments. \
+          Define it as `##{method}(input)`, or with the keyword arguments you expect, \
+          or remove the contract.
+        MSG
+      end
+    end
+
     # Defined failure hook has wrong arity
     class FailureHookArityError < ::StandardError
       def initialize(hook:)
