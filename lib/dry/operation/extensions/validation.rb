@@ -13,9 +13,45 @@ module Dry
       #
       # When this extension is included, define your contract on your operation class using
       # `params`, `schema`, or `contract`, or make a `#contract` dependency available from your
-      # operation instance.
+      # operation instance. The operation's input is validated before its method body runs, and the
+      # method receives the contract's output in place of the input it was called with.
       #
-      # @see https://dry-rb.org/gems/dry-validation/
+      # The input is the last positional argument (when positional args are present), or the keyword
+      # arguments in full. Both of these validate `{name: "Alice"}`:
+      #
+      # ```
+      # operation.call(name: "Alice")
+      # operation.call({name: "Alice"})
+      # ```
+      #
+      # When the input is given as a positional argument, any earlier positional arguments and any
+      # keyword arguments are considered the operation's own. They never pass through the validation
+      # contract, and are never set by the contract's output. Use these for arguments that control
+      # the operation's own behavior alongside its validated input.
+      #
+      # ```
+      # class UpdateUser < Dry::Operation
+      #   include Dry::Operation::Extensions::Validation
+      #
+      #   params do
+      #     required(:name).filled(:string)
+      #   end
+      #
+      #   def call(id, attrs, notify: false)
+      #     step persist(id, attrs)
+      #   end
+      # end
+      #
+      # update_user = UpdateUser.new
+      # update_user.call(123, {name: "Alice", admin: true}, notify: true)
+      # # id is 123 - not passed through the contract
+      # # attrs is {name: "Alice"} - admin filtered out by the contract
+      # # notify is true - not passed through the contract
+      # ```
+      #
+      # When there is no contract defined, all arguments are forwarded untouched.
+      #
+      # @see https://hanakai.org/learn/dry/dry-validation
       #
       # @api public
       # @since 1.2.0
@@ -168,59 +204,21 @@ module Dry
 
           private
 
-          # rubocop:disable Metrics/PerceivedComplexity
           def define_validation_method
-            # Cache named kwargs outside the method closure so we only search for them once.
-            named_kwargs = nil
-            find_named_kwargs = method(:find_named_kwargs)
+            define_method(@method_name) do |*args, **kwargs, &block|
+              # Without a contract there's nothing to validate, so the arguments the method was
+              # called with are forwarded untouched.
+              return super(*args, **kwargs, &block) unless contract
 
-            define_method(@method_name) do |input = {}, *rest, **kwargs, &block|
-              use_kwargs = !kwargs.empty? && input.empty? && rest.empty?
-              actual_input = use_kwargs ? kwargs : input
-
-              validation_result = validate(actual_input)
-
-              case validation_result
-              when Dry::Monads::Success
-                validated_input = validation_result.value!
-
-                if use_kwargs
-                  # Ensure named kwargs from the wrapped method are still passed through even if
-                  # they are not in the validation output. This is important for kwargs that exist
-                  # to serve the method's own logic, separate to the scope of validatable input.
-                  named_kwargs ||= find_named_kwargs.call(method(__method__).super_method)
-                  passthrough_keys = actual_input
-                    .slice(*named_kwargs)
-                    .reject { |k, _| validated_input.key?(k) }
-                  validated_input = passthrough_keys.merge(validated_input)
-
-                  super(**validated_input, &block)
-                else
-                  super(validated_input, *rest, **kwargs, &block)
-                end
-              when Dry::Monads::Failure
-                throw_failure(validation_result)
+              if args.empty?
+                # The keyword arguments are the input.
+                super(**step(validate(kwargs)), &block)
+              else
+                # The last positional argument is the input. Pass through all other args.
+                *rest, input = args
+                super(*rest, step(validate(input)), **kwargs, &block)
               end
             end
-          end
-          # rubocop:enable Metrics/PerceivedComplexity
-
-          NAMED_KWARG_TYPES = %i[key keyreq].freeze
-
-          def find_named_kwargs(method)
-            # Walk up the method chain to find the first method with named kwargs.
-            while method
-              named_kwargs = method
-                .parameters
-                .select { |type, _| NAMED_KWARG_TYPES.include?(type) }
-                .map(&:last)
-
-              return named_kwargs if named_kwargs.any?
-
-              method = method.super_method
-            end
-
-            []
           end
         end
       end
