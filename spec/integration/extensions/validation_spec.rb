@@ -375,18 +375,18 @@ RSpec.describe Dry::Operation::Extensions::Validation do
     end
   end
 
-  describe "selective validation with unvalidated keys preserved" do
-    it "preserves unvalidated named kwargs and coerces validated values" do
+  describe "arguments passed through alongside validated input" do
+    it "passes through keyword arguments when input given as a positional argument" do
       calculate = Class.new(Dry::Operation) do
         include Dry::Operation::Extensions::Validation
 
         params do
-          # Validate and coerce x and y, but not operation
+          # Validate and coerce x and y. `operation` is not input, so it isn't here.
           required(:x).value(:integer)
           required(:y).value(:integer)
         end
 
-        def call(operation:, **values)
+        def call(values, operation:)
           # operation is passed through (not validated)
           # x and y are coerced from strings to integers
           result = case operation
@@ -398,14 +398,14 @@ RSpec.describe Dry::Operation::Extensions::Validation do
         end
       end
 
-      # x and y are coerced to integers, operation is preserved as symbol
-      result = calculate.new.call(operation: :add, x: "10", y: "20")
+      # x and y are coerced to integers, operation is preserved as a symbol
+      result = calculate.new.call({x: "10", y: "20"}, operation: :add)
 
       expect(result).to be_success
       expect(result.value!).to eq(operation: :add, x: 10, y: 20, result: 30)
     end
 
-    it "filters out invalid keys in splat args while preserving named kwargs" do
+    it "passes through leading positional arguments when input given as a final positional argument" do
       update_user = Class.new(Dry::Operation) do
         include Dry::Operation::Extensions::Validation
 
@@ -415,20 +415,149 @@ RSpec.describe Dry::Operation::Extensions::Validation do
           # Deliberately doesn't allow :admin - should be filtered
         end
 
-        def call(id:, **attrs)
-          # id should be preserved (named kwarg)
-          # admin should be filtered (not in contract, and not a named kwarg)
+        def call(id, attrs)
+          # id is a parameter, so it's untouched by the contract
+          # admin should be filtered (not allowed by the contract)
           attrs.merge(id: id)
         end
       end
 
-      # User tries to sneak in admin: true
-      result = update_user.new.call(id: 123, name: "Alice", admin: true)
+      # User tries to sneak in `id: 456` and `admin: true`
+      result = update_user.new.call(123, {name: "Alice", id: 456, admin: true})
 
       expect(result).to be_success
-      # admin should NOT be present - contract filtered it
+      # id and admin from the input are filtered out by the contract
       expect(result.value!).to eq(id: 123, name: "Alice")
       expect(result.value!).not_to have_key(:admin)
+    end
+
+    it "passes through both leading positional arguments as well keyword arguments" do
+      operation = Class.new(Dry::Operation) do
+        include Dry::Operation::Extensions::Validation
+
+        params do
+          required(:name).filled(:string)
+        end
+
+        def call(suffix, attrs, upcase: false)
+          name = "#{attrs[:name]}#{suffix}"
+
+          upcase ? name.upcase : name
+        end
+      end
+
+      result = operation.new.call("!", {name: "Alice"}, upcase: true)
+
+      expect(result).to eq(Success("ALICE!"))
+    end
+  end
+
+  describe "operations taking no input" do
+    it "calls a method taking no arguments when no contract is defined" do
+      operation = Class.new(Dry::Operation) do
+        include Dry::Operation::Extensions::Validation
+
+        def call
+          step build_thing
+        end
+
+        private
+
+        def build_thing
+          Success(:thing)
+        end
+      end
+
+      expect(operation.new.call).to eq(Success(:thing))
+    end
+
+    it "forwards arguments untouched when no contract is defined" do
+      operation = Class.new(Dry::Operation) do
+        include Dry::Operation::Extensions::Validation
+
+        def call(input, extra: nil)
+          [input, extra]
+        end
+      end
+
+      expect(operation.new.call(:input, extra: :extra)).to eq(Success([:input, :extra]))
+    end
+
+    it "calls a method taking no arguments when the contract validates an empty input" do
+      operation = Class.new(Dry::Operation) do
+        include Dry::Operation::Extensions::Validation
+
+        params do
+          optional(:name).filled(:string)
+        end
+
+        def call
+          step build_thing
+        end
+
+        private
+
+        def build_thing
+          Success(:thing)
+        end
+      end
+
+      expect(operation.new.call).to eq(Success(:thing))
+    end
+
+    it "fails validation when a method taking no arguments has a contract requiring input" do
+      operation = Class.new(Dry::Operation) do
+        include Dry::Operation::Extensions::Validation
+
+        params do
+          required(:name).filled(:string)
+        end
+
+        def call
+          Success(:thing)
+        end
+      end
+
+      result = operation.new.call
+
+      expect(result).to be_failure
+      failure_type, validation_result = result.failure
+      expect(failure_type).to eq(:invalid)
+      expect(validation_result.errors.to_h).to eq(name: ["is missing"])
+    end
+
+    it "raises when input is given to a method that takes no arguments" do
+      operation = Class.new(Dry::Operation) do
+        include Dry::Operation::Extensions::Validation
+
+        params do
+          optional(:name).filled(:string)
+        end
+
+        def call
+          Success(:thing)
+        end
+      end
+
+      expect { operation.new.call(name: "Alice") }
+        .to raise_error(ArgumentError, /wrong number of arguments/)
+    end
+
+    it "validates an empty input for a method taking only keyword arguments" do
+      operation = Class.new(Dry::Operation) do
+        include Dry::Operation::Extensions::Validation
+
+        params do
+          optional(:name).filled(:string)
+        end
+
+        def call(name: "anonymous")
+          name
+        end
+      end
+
+      expect(operation.new.call).to eq(Success("anonymous"))
+      expect(operation.new.call(name: "Alice")).to eq(Success("Alice"))
     end
   end
 end
