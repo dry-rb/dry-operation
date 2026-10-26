@@ -28,14 +28,10 @@ group :development, :test do
   gem "sqlite3", platform: :mri
   gem "jdbc-sqlite3", platform: :jruby
 
-  # We track master because no released version of the adapter (80.x or 81.x) works yet with JRuby
-  # 10.1.x, which is what we test against.
+  # Use a prerelease, since older adapter versions do not work with JRuby 10.1.x, which is what we
+  # test against.
   #
-  # As of 2026-06-07, pin to a commit before jruby/activerecord-jdbc-adapter#1207, which relaxed the
-  # activerecord dependency to `~> 8.0` and pulls in activerecord 8.1.x. The adapter's 8.1 support
-  # is currently broken for SQLite3 (NoMethodError: undefined method 'mutable?' for nil).
-  gem "activerecord-jdbcsqlite3-adapter",
-    github: "jruby/activerecord-jdbc-adapter",
-    ref: "74aeab07a97001de74591ff5f50a6ff9807e9faa",
-    platform: :jruby
+  # (Do not install this adapter from git. Its jar must be compiled at install time, and Bundler on
+  # JRuby 10.1.2+ skips that step, so the adapter fails to load.)
+  gem "activerecord-jdbcsqlite3-adapter", "81.0.pre1", platform: :jruby
 end
