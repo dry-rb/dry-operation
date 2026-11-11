@@ -71,6 +71,18 @@ RSpec.describe "Operations" do
   end
 
   context "#on_failure" do
+    it "returns the failure when no hook is defined" do
+      klass = Class.new(Dry::Operation) do
+        def call(x)
+          step divide_by_zero(x)
+        end
+
+        def divide_by_zero(_x) = Failure(:not_possible)
+      end
+
+      expect(klass.new.(1)).to eq(Failure(:not_possible))
+    end
+
     it "is called when prepending if a failure is returned" do
       klass = Class.new(Dry::Operation) do
         attr_reader :failure

@@ -11,6 +11,8 @@ and this project adheres to [Break Versioning](https://www.taoensso.com/break-ve
 
 ### Changed
 
+- Speed up failing operations by checking for an `on_failure` hook without listing every method of the operation. (@parndt)
+
 ### Deprecated
 
 ### Removed

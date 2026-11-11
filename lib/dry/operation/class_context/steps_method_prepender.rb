@@ -10,10 +10,7 @@ module Dry
         FAILURE_HOOK_METHOD_NAME = :on_failure
 
         RESULT_HANDLER = lambda do |instance, method, result|
-          return if result.success? ||
-                    !(instance.methods + instance.private_methods).include?(
-                      FAILURE_HOOK_METHOD_NAME
-                    )
+          return if result.success? || !instance.respond_to?(FAILURE_HOOK_METHOD_NAME, true)
 
           failure_hook = instance.method(FAILURE_HOOK_METHOD_NAME)
           case failure_hook.arity
