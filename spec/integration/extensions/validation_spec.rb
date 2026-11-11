@@ -375,80 +375,179 @@ RSpec.describe Dry::Operation::Extensions::Validation do
     end
   end
 
-  describe "arguments passed through alongside validated input" do
-    it "passes through keyword arguments when input given as a positional argument" do
-      calculate = Class.new(Dry::Operation) do
-        include Dry::Operation::Extensions::Validation
-
-        params do
-          # Validate and coerce x and y. `operation` is not input, so it isn't here.
-          required(:x).value(:integer)
-          required(:y).value(:integer)
-        end
-
-        def call(values, operation:)
-          # operation is passed through (not validated)
-          # x and y are coerced from strings to integers
-          result = case operation
-                   when :add then values[:x] + values[:y]
-                   else 0
-                   end
-
-          {operation:, x: values[:x], y: values[:y], result:}
-        end
-      end
-
-      # x and y are coerced to integers, operation is preserved as a symbol
-      result = calculate.new.call({x: "10", y: "20"}, operation: :add)
-
-      expect(result).to be_success
-      expect(result.value!).to eq(operation: :add, x: 10, y: 20, result: 30)
-    end
-
-    it "passes through leading positional arguments when input given as a final positional argument" do
+  describe "validating all keyword arguments" do
+    it "passes through positional arguments untouched" do
       update_user = Class.new(Dry::Operation) do
         include Dry::Operation::Extensions::Validation
 
         params do
           required(:name).filled(:string)
-          optional(:email).filled(:string)
-          # Deliberately doesn't allow :admin - should be filtered
         end
 
-        def call(id, attrs)
-          # id is a parameter, so it's untouched by the contract
-          # admin should be filtered (not allowed by the contract)
-          attrs.merge(id: id)
+        def call(id, name:)
+          {id:, name:}
         end
       end
 
-      # User tries to sneak in `id: 456` and `admin: true`
-      result = update_user.new.call(123, {name: "Alice", id: 456, admin: true})
+      result = update_user.new.call("123", name: "Alice")
 
-      expect(result).to be_success
-      # id and admin from the input are filtered out by the contract
-      expect(result.value!).to eq(id: 123, name: "Alice")
-      expect(result.value!).not_to have_key(:admin)
+      expect(result).to eq(Success(id: "123", name: "Alice"))
     end
 
-    it "passes through both leading positional arguments as well keyword arguments" do
+    it "does not validate a positional hash" do
       operation = Class.new(Dry::Operation) do
         include Dry::Operation::Extensions::Validation
 
         params do
-          required(:name).filled(:string)
+          optional(:name).filled(:string)
         end
 
-        def call(suffix, attrs, upcase: false)
-          name = "#{attrs[:name]}#{suffix}"
-
-          upcase ? name.upcase : name
+        def call(input)
+          input
         end
       end
 
-      result = operation.new.call("!", {name: "Alice"}, upcase: true)
+      expect(operation.new.call({name: ""})).to eq(Success(name: ""))
+    end
+  end
 
-      expect(result).to eq(Success("ALICE!"))
+  describe "validating a single keyword argument with for:" do
+    let(:update_user) {
+      Class.new(Dry::Operation) do
+        include Dry::Operation::Extensions::Validation
+
+        params(for: :attrs) do
+          required(:name).filled(:string)
+          optional(:age).value(:integer)
+        end
+
+        def call(id, attrs:, notify: false)
+          {id:, attrs:, notify:}
+        end
+      end
+    }
+
+    it "validates the keyword argument's value, passing through other arguments untouched" do
+      result = update_user.new.call(123, attrs: {name: "Alice", age: "30", admin: true}, notify: "yes")
+
+      expect(result).to eq(Success(id: 123, attrs: {name: "Alice", age: 30}, notify: "yes"))
+    end
+
+    it "returns a failure when the keyword argument's value is invalid" do
+      result = update_user.new.call(123, attrs: {name: ""})
+
+      expect(result).to be_failure
+      failure_type, validation_result = result.failure
+      expect(failure_type).to eq(:invalid)
+      expect(validation_result.errors.to_h).to eq(name: ["must be filled"])
+    end
+
+    it "leaves a missing keyword argument to the method's own signature" do
+      expect { update_user.new.call(123) }
+        .to raise_error(ArgumentError, /missing keyword: :attrs/)
+    end
+
+    it "is supported by contract and schema" do
+      user_contract = Class.new(Dry::Validation::Contract) do
+        params do
+          required(:name).filled(:string)
+        end
+      end
+
+      with_contract = Class.new(Dry::Operation) do
+        include Dry::Operation::Extensions::Validation
+
+        contract user_contract, for: :attrs
+
+        def call(attrs:, notify: false)
+          [attrs, notify]
+        end
+      end
+
+      with_schema = Class.new(Dry::Operation) do
+        include Dry::Operation::Extensions::Validation
+
+        schema(for: :attrs) do
+          required(:name).filled(:string)
+        end
+
+        def call(attrs:, notify: false)
+          [attrs, notify]
+        end
+      end
+
+      [with_contract, with_schema].each do |operation|
+        expect(operation.new.call(attrs: {name: "Alice", admin: true}, notify: true))
+          .to eq(Success([{name: "Alice"}, true]))
+      end
+    end
+
+    it "is inherited by subclasses" do
+      child = Class.new(update_user)
+
+      expect(child.new.call(1, attrs: {name: "Alice"})).to eq(Success(id: 1, attrs: {name: "Alice"}, notify: false))
+    end
+  end
+
+  describe "validating a subset of keyword arguments with keys:" do
+    let(:authorize) {
+      Class.new(Dry::Operation) do
+        include Dry::Operation::Extensions::Validation
+
+        params(keys: %i[account_id scope]) do
+          required(:account_id).filled(:integer)
+          optional(:scope).array(:string)
+        end
+
+        def call(code, account_id:, scope: [], notify: false)
+          {code:, account_id:, scope:, notify:}
+        end
+      end
+    }
+
+    it "validates the named keyword arguments together, passing through other arguments untouched" do
+      result = authorize.new.call("abc", account_id: "1", scope: ["read"], notify: "yes")
+
+      expect(result).to eq(Success(code: "abc", account_id: 1, scope: ["read"], notify: "yes"))
+    end
+
+    it "returns a failure when the named keyword arguments are invalid" do
+      result = authorize.new.call("abc", scope: ["read"])
+
+      expect(result).to be_failure
+      failure_type, validation_result = result.failure
+      expect(failure_type).to eq(:invalid)
+      expect(validation_result.errors.to_h).to eq(account_id: ["is missing"])
+    end
+
+    it "lets the method's own defaults apply to optional keys that are not given" do
+      expect(authorize.new.call("abc", account_id: 1)).to eq(Success(code: "abc", account_id: 1, scope: [], notify: false))
+    end
+  end
+
+  describe "contract input options" do
+    it "raises when both for: and keys: are given" do
+      expect {
+        Class.new(Dry::Operation) do
+          include Dry::Operation::Extensions::Validation
+
+          params(for: :attrs, keys: %i[name]) do
+            required(:name).filled(:string)
+          end
+        end
+      }.to raise_error(ArgumentError, "pass either for: or keys:, not both")
+    end
+
+    it "raises when an unknown option is given" do
+      expect {
+        Class.new(Dry::Operation) do
+          include Dry::Operation::Extensions::Validation
+
+          params(fro: :attrs) do
+            required(:name).filled(:string)
+          end
+        end
+      }.to raise_error(ArgumentError, "unknown keyword: :fro")
     end
   end
 
