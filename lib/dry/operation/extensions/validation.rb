@@ -165,7 +165,8 @@ module Dry
           # Defines a validation contract using the full contract DSL.
           #
           # @param klass [Class, nil] A Dry::Validation::Contract subclass to use
-          # @param for [Symbol, nil] The keyword argument whose value to validate
+          # @param options [Hash] Additional options
+          # @option options [Symbol, nil] :for The keyword argument whose value to validate
           # @param keys [Array<Symbol>, nil] The keyword arguments to validate together
           # @yield Block for defining contract rules
           # @return [void]
@@ -186,7 +187,8 @@ module Dry
 
           # Defines a validation contract using the schema DSL only.
           #
-          # @param for [Symbol, nil] The keyword argument whose value to validate
+          # @param options [Hash] Additional options
+          # @option options [Symbol, nil] :for The keyword argument whose value to validate
           # @param keys [Array<Symbol>, nil] The keyword arguments to validate together
           # @yield Block for defining schema validation rules
           # @return [void]
@@ -207,7 +209,8 @@ module Dry
 
           # Defines a validation contract using the params schema DSL only.
           #
-          # @param for [Symbol, nil] The keyword argument whose value to validate
+          # @param options [Hash] Additional options
+          # @option options [Symbol, nil] :for The keyword argument whose value to validate
           # @param keys [Array<Symbol>, nil] The keyword arguments to validate together
           # @yield Block for defining params validation rules
           # @return [void]
