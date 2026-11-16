@@ -13,14 +13,95 @@ module Dry
       #
       # When this extension is included, define your contract on your operation class using
       # `params`, `schema`, or `contract`, or make a `#contract` dependency available from your
-      # operation instance.
+      # operation instance. The operation's keyword arguments are validated before its method body
+      # runs, and the method receives the contract's output in place of the input it was called with.
+      # Positional arguments are never validated, and are always passed through untouched.
       #
-      # @see https://dry-rb.org/gems/dry-validation/
+      # By default, the keyword arguments are validated as a whole:
+      #
+      # ```
+      # class CreateUser < Dry::Operation
+      #   include Dry::Operation::Extensions::Validation
+      #
+      #   params do
+      #     required(:name).filled(:string)
+      #   end
+      #
+      #   def call(name:)
+      #     # ...
+      #   end
+      # end
+      #
+      # CreateUser.new.call(name: "Alice")
+      # ```
+      #
+      # The method receives only the keyword arguments in the contract's output. Any keyword
+      # arguments not declared by the contract are dropped. To pass other keyword arguments through
+      # to the method, use `for:` or `keys:`.
+      #
+      # Use `for:` to validate the value of a single keyword argument, leaving the others untouched:
+      #
+      # ```
+      # class UpdateUser < Dry::Operation
+      #   include Dry::Operation::Extensions::Validation
+      #
+      #   params(for: :attrs) do
+      #     required(:name).filled(:string)
+      #   end
+      #
+      #   def call(user, attrs:, notify: false)
+      #     # ...
+      #   end
+      # end
+      #
+      # UpdateUser.new.call(user, attrs: {name: "Alice", admin: true}, notify: true)
+      # # user is passed through untouched
+      # # attrs is {name: "Alice"}, with admin filtered out by the contract
+      # # notify is passed through untouched
+      # ```
+      #
+      # Use `keys:` to validate a subset of the keyword arguments, leaving the others untouched:
+      #
+      # ```
+      # class AuthorizeCode < Dry::Operation
+      #   include Dry::Operation::Extensions::Validation
+      #
+      #   params(keys: %i[account_id scope]) do
+      #     required(:account_id).filled(:string)
+      #     optional(:scope).array(:string)
+      #   end
+      #
+      #   def call(code, account_id:, scope: [], notify: false)
+      #     # ...
+      #   end
+      # end
+      # ```
+      #
+      # When a `for:` keyword argument is not given, there is nothing to validate, so the method is
+      # called without it, and its own signature decides whether that is allowed.
+      #
+      # When there is no contract defined, all arguments are forwarded untouched.
+      #
+      # @see https://hanakai.org/learn/dry/dry-validation
       #
       # @api public
       # @since 1.2.0
       module Validation
         CONTRACT_CLASS_NAME = "Contract"
+
+        # The config for how an operation validates its keyword arguments: the contract class, and
+        # which keyword arguments are its input.
+        #
+        # @api private
+        Config = Data.define(:contract_class, :for_key, :keys) do
+          def initialize(contract_class: nil, for_key: nil, keys: nil)
+            raise ArgumentError, "pass either for: or keys:, not both" if for_key && keys
+
+            super
+          end
+        end
+
+        DEFAULT_CONFIG = Config.new
 
         def self.included(klass)
           klass.extend(ClassMethods)
@@ -70,56 +151,71 @@ module Dry
         # @api public
         # @since 1.2.0
         module ClassMethods
+          # @return [Config]
+          #
           # @api private
-          attr_reader :contract_class
+          def validation_config
+            @validation_config || DEFAULT_CONFIG
+          end
+
+          # @return [Class, nil]
+          #
+          # @api private
+          def contract_class
+            validation_config.contract_class
+          end
 
           # Defines a validation contract using the full contract DSL.
           #
           # @param klass [Class, nil] A Dry::Validation::Contract subclass to use
+          # @param for [Symbol, nil] The keyword argument whose value to validate
+          # @param keys [Array<Symbol>, nil] The keyword arguments to validate together
           # @yield Block for defining contract rules
           # @return [void]
           #
           # @api public
           # @since 1.2.0
-          def contract(klass = nil, &block)
+          def contract(klass = nil, for: nil, keys: nil, &block)
+            # Build the config first, to validate options
+            config = Config.new(for_key: binding.local_variable_get(:for), keys:)
+
             if klass.nil?
               klass = Class.new(Dry::Validation::Contract, &block)
               const_set(CONTRACT_CLASS_NAME, klass)
             end
 
-            @contract_class = klass
+            @validation_config = config.with(contract_class: klass)
             _apply_validation
           end
 
           # Defines a validation contract using the schema DSL only.
           #
+          # @param for [Symbol, nil] The keyword argument whose value to validate
+          # @param keys [Array<Symbol>, nil] The keyword arguments to validate together
           # @yield Block for defining schema validation rules
           # @return [void]
-          def schema(&block)
+          #
+          # @api public
+          # @since 1.2.0
+          def schema(for: nil, keys: nil, &block)
             raise ArgumentError, "schema requires a block" unless block_given?
 
-            klass = Class.new(Dry::Validation::Contract) { schema(&block) }
-            const_set(CONTRACT_CLASS_NAME, klass)
-
-            @contract_class = klass
-            _apply_validation
+            contract(for: binding.local_variable_get(:for), keys:) { schema(&block) }
           end
 
           # Defines a validation contract using the params schema DSL only.
           #
+          # @param for [Symbol, nil] The keyword argument whose value to validate
+          # @param keys [Array<Symbol>, nil] The keyword arguments to validate together
           # @yield Block for defining params validation rules
           # @return [void]
           #
           # @api public
           # @since 1.2.0
-          def params(&block)
+          def params(for: nil, keys: nil, &block)
             raise ArgumentError, "params requires a block" unless block_given?
 
-            klass = Class.new(Dry::Validation::Contract) { params(&block) }
-            const_set(CONTRACT_CLASS_NAME, klass)
-
-            @contract_class = klass
-            _apply_validation
+            contract(for: binding.local_variable_get(:for), keys:) { params(&block) }
           end
 
           private
@@ -134,8 +230,8 @@ module Dry
           def inherited(subclass)
             super
 
-            if defined?(@contract_class)
-              subclass.instance_variable_set(:@contract_class, @contract_class)
+            if defined?(@validation_config)
+              subclass.instance_variable_set(:@validation_config, @validation_config)
             end
           end
 
@@ -168,59 +264,25 @@ module Dry
 
           private
 
-          # rubocop:disable Metrics/PerceivedComplexity
           def define_validation_method
-            # Cache named kwargs outside the method closure so we only search for them once.
-            named_kwargs = nil
-            find_named_kwargs = method(:find_named_kwargs)
+            define_method(@method_name) do |*args, **kwargs, &block|
+              # With no contract there's nothing to validate, so forward all args.
+              return super(*args, **kwargs, &block) unless contract
 
-            define_method(@method_name) do |input = {}, *rest, **kwargs, &block|
-              use_kwargs = !kwargs.empty? && input.empty? && rest.empty?
-              actual_input = use_kwargs ? kwargs : input
+              config = self.class.validation_config
 
-              validation_result = validate(actual_input)
-
-              case validation_result
-              when Dry::Monads::Success
-                validated_input = validation_result.value!
-
-                if use_kwargs
-                  # Ensure named kwargs from the wrapped method are still passed through even if
-                  # they are not in the validation output. This is important for kwargs that exist
-                  # to serve the method's own logic, separate to the scope of validatable input.
-                  named_kwargs ||= find_named_kwargs.call(method(__method__).super_method)
-                  passthrough_keys = actual_input
-                    .slice(*named_kwargs)
-                    .reject { |k, _| validated_input.key?(k) }
-                  validated_input = passthrough_keys.merge(validated_input)
-
-                  super(**validated_input, &block)
-                else
-                  super(validated_input, *rest, **kwargs, &block)
-                end
-              when Dry::Monads::Failure
-                throw_failure(validation_result)
+              # Provide the contract's output as the input arguments for this method call.
+              if (key = config.for_key)
+                # When the key is missing, the method's own signature decides if that is allowed.
+                kwargs = kwargs.merge(key => step(validate(kwargs[key]))) if kwargs.key?(key)
+              elsif (keys = config.keys)
+                kwargs = kwargs.except(*keys).merge(step(validate(kwargs.slice(*keys))))
+              else
+                kwargs = step(validate(kwargs))
               end
+
+              super(*args, **kwargs, &block)
             end
-          end
-          # rubocop:enable Metrics/PerceivedComplexity
-
-          NAMED_KWARG_TYPES = %i[key keyreq].freeze
-
-          def find_named_kwargs(method)
-            # Walk up the method chain to find the first method with named kwargs.
-            while method
-              named_kwargs = method
-                .parameters
-                .select { |type, _| NAMED_KWARG_TYPES.include?(type) }
-                .map(&:last)
-
-              return named_kwargs if named_kwargs.any?
-
-              method = method.super_method
-            end
-
-            []
           end
         end
       end
