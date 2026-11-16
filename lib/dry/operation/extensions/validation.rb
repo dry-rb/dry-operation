@@ -165,84 +165,59 @@ module Dry
           # Defines a validation contract using the full contract DSL.
           #
           # @param klass [Class, nil] A Dry::Validation::Contract subclass to use
-          # @param options [Hash] Additional options
-          # @option options [Symbol, nil] :for The keyword argument whose value to validate
+          # @param for [Symbol, nil] The keyword argument whose value to validate
           # @param keys [Array<Symbol>, nil] The keyword arguments to validate together
           # @yield Block for defining contract rules
           # @return [void]
           #
           # @api public
           # @since 1.2.0
-          def contract(klass = nil, keys: nil, **options, &block)
-            _configure_contract_input(keys:, **options)
+          def contract(klass = nil, for: nil, keys: nil, &block)
+            for_key = binding.local_variable_get(:for)
+            raise ArgumentError, "pass either for: or keys:, not both" if for_key && keys
 
             if klass.nil?
               klass = Class.new(Dry::Validation::Contract, &block)
               const_set(CONTRACT_CLASS_NAME, klass)
             end
 
+            @contract_for = for_key
+            @contract_keys = keys
             @contract_class = klass
             _apply_validation
           end
 
           # Defines a validation contract using the schema DSL only.
           #
-          # @param options [Hash] Additional options
-          # @option options [Symbol, nil] :for The keyword argument whose value to validate
+          # @param for [Symbol, nil] The keyword argument whose value to validate
           # @param keys [Array<Symbol>, nil] The keyword arguments to validate together
           # @yield Block for defining schema validation rules
           # @return [void]
           #
           # @api public
           # @since 1.2.0
-          def schema(keys: nil, **options, &block)
+          def schema(for: nil, keys: nil, &block)
             raise ArgumentError, "schema requires a block" unless block_given?
 
-            _configure_contract_input(keys:, **options)
-
-            klass = Class.new(Dry::Validation::Contract) { schema(&block) }
-            const_set(CONTRACT_CLASS_NAME, klass)
-
-            @contract_class = klass
-            _apply_validation
+            contract(for: binding.local_variable_get(:for), keys:) { schema(&block) }
           end
 
           # Defines a validation contract using the params schema DSL only.
           #
-          # @param options [Hash] Additional options
-          # @option options [Symbol, nil] :for The keyword argument whose value to validate
+          # @param for [Symbol, nil] The keyword argument whose value to validate
           # @param keys [Array<Symbol>, nil] The keyword arguments to validate together
           # @yield Block for defining params validation rules
           # @return [void]
           #
           # @api public
           # @since 1.2.0
-          def params(keys: nil, **options, &block)
+          def params(for: nil, keys: nil, &block)
             raise ArgumentError, "params requires a block" unless block_given?
 
-            _configure_contract_input(keys:, **options)
-
-            klass = Class.new(Dry::Validation::Contract) { params(&block) }
-            const_set(CONTRACT_CLASS_NAME, klass)
-
-            @contract_class = klass
-            _apply_validation
+            contract(for: binding.local_variable_get(:for), keys:) { params(&block) }
           end
 
           private
-
-          # `for` is a reserved word, so it is taken from the options hash rather than declared as a
-          # keyword argument.
-          def _configure_contract_input(keys:, **options)
-            unknown = options.keys - [:for]
-            raise ArgumentError, "unknown keyword: #{unknown.map(&:inspect).join(", ")}" if unknown.any?
-
-            key = options[:for]
-            raise ArgumentError, "pass either for: or keys:, not both" if key && keys
-
-            @contract_for = key
-            @contract_keys = keys
-          end
 
           def method_added(method_name)
             return unless @_prepend_manager.registered_methods.include?(method_name)
