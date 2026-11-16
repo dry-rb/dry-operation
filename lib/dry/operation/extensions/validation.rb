@@ -125,28 +125,6 @@ module Dry
             @contract = self.class.contract_class&.new
           end
 
-          # Validates the keyword arguments given to an operation method, according to the input
-          # configured by the `for:` or `keys:` options given when defining the contract.
-          #
-          # @param kwargs [Hash] The keyword arguments given to the method
-          # @return [Dry::Monads::Result] Success with the keyword arguments to pass to the method,
-          #   or Failure with result
-          #
-          # @api private
-          def validate_kwargs(kwargs)
-            config = self.class.validation_config
-
-            if (key = config.for_key)
-              return Success(kwargs) unless kwargs.key?(key)
-
-              validate(kwargs[key]).fmap { |output| kwargs.merge(key => output) }
-            elsif (keys = config.keys)
-              validate(kwargs.slice(*keys)).fmap { |output| kwargs.except(*keys).merge(output) }
-            else
-              validate(kwargs)
-            end
-          end
-
           # Validates the input using the operation's {#contract}.
           #
           # @param input [Hash] The input to validate
@@ -288,7 +266,19 @@ module Dry
               # called with are forwarded untouched.
               return super(*args, **kwargs, &block) unless contract
 
-              super(*args, **step(validate_kwargs(kwargs)), &block)
+              config = self.class.validation_config
+
+              # Replace the input in the keyword arguments with the contract's output.
+              if (key = config.for_key)
+                # When the key is missing, the method's own signature decides if that is allowed.
+                kwargs = kwargs.merge(key => step(validate(kwargs[key]))) if kwargs.key?(key)
+              elsif (keys = config.keys)
+                kwargs = kwargs.except(*keys).merge(step(validate(kwargs.slice(*keys))))
+              else
+                kwargs = step(validate(kwargs))
+              end
+
+              super(*args, **kwargs, &block)
             end
           end
         end
