@@ -85,6 +85,20 @@ module Dry
       module Validation
         CONTRACT_CLASS_NAME = "Contract"
 
+        # The config for how an operation validates its keyword arguments: the contract class, and
+        # which keyword arguments are its input.
+        #
+        # @api private
+        Config = Data.define(:contract_class, :for_key, :keys) do
+          def initialize(contract_class: nil, for_key: nil, keys: nil)
+            raise ArgumentError, "pass either for: or keys:, not both" if for_key && keys
+
+            super
+          end
+        end
+
+        DEFAULT_CONFIG = Config.new
+
         def self.included(klass)
           klass.extend(ClassMethods)
           klass.prepend(InstanceMethods)
@@ -120,11 +134,13 @@ module Dry
           #
           # @api private
           def validate_kwargs(kwargs)
-            if (key = self.class.contract_for)
+            config = self.class.validation_config
+
+            if (key = config.for_key)
               return Success(kwargs) unless kwargs.key?(key)
 
               validate(kwargs[key]).fmap { |output| kwargs.merge(key => output) }
-            elsif (keys = self.class.contract_keys)
+            elsif (keys = config.keys)
               validate(kwargs.slice(*keys)).fmap { |output| kwargs.except(*keys).merge(output) }
             else
               validate(kwargs)
@@ -153,14 +169,19 @@ module Dry
         # @api public
         # @since 1.2.0
         module ClassMethods
+          # @return [Config]
+          #
           # @api private
-          attr_reader :contract_class
+          def validation_config
+            @validation_config || DEFAULT_CONFIG
+          end
 
+          # @return [Class, nil]
+          #
           # @api private
-          attr_reader :contract_for
-
-          # @api private
-          attr_reader :contract_keys
+          def contract_class
+            validation_config.contract_class
+          end
 
           # Defines a validation contract using the full contract DSL.
           #
@@ -173,17 +194,15 @@ module Dry
           # @api public
           # @since 1.2.0
           def contract(klass = nil, for: nil, keys: nil, &block)
-            for_key = binding.local_variable_get(:for)
-            raise ArgumentError, "pass either for: or keys:, not both" if for_key && keys
+            # Build the config first, to validate options
+            config = Config.new(for_key: binding.local_variable_get(:for), keys:)
 
             if klass.nil?
               klass = Class.new(Dry::Validation::Contract, &block)
               const_set(CONTRACT_CLASS_NAME, klass)
             end
 
-            @contract_for = for_key
-            @contract_keys = keys
-            @contract_class = klass
+            @validation_config = config.with(contract_class: klass)
             _apply_validation
           end
 
@@ -229,10 +248,8 @@ module Dry
           def inherited(subclass)
             super
 
-            if defined?(@contract_class)
-              subclass.instance_variable_set(:@contract_class, @contract_class)
-              subclass.instance_variable_set(:@contract_for, @contract_for)
-              subclass.instance_variable_set(:@contract_keys, @contract_keys)
+            if defined?(@validation_config)
+              subclass.instance_variable_set(:@validation_config, @validation_config)
             end
           end
 
