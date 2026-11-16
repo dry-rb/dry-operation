@@ -444,7 +444,7 @@ RSpec.describe Dry::Operation::Extensions::Validation do
 
     it "leaves a missing keyword argument to the method's own signature" do
       expect { update_user.new.call(123) }
-        .to raise_error(ArgumentError, /missing keyword: :attrs/)
+        .to raise_error(ArgumentError, /missing keyword: :?attrs/) # JRuby omits the colon
     end
 
     it "is supported by contract and schema" do
