@@ -262,8 +262,7 @@ module Dry
 
           def define_validation_method
             define_method(@method_name) do |*args, **kwargs, &block|
-              # Without a contract there's nothing to validate, so the arguments the method was
-              # called with are forwarded untouched.
+              # With no contract there's nothing to validate, so forward all args.
               return super(*args, **kwargs, &block) unless contract
 
               config = self.class.validation_config
