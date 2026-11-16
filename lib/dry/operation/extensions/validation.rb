@@ -35,6 +35,10 @@ module Dry
       # CreateUser.new.call(name: "Alice")
       # ```
       #
+      # The method receives only the keyword arguments in the contract's output. Any keyword
+      # arguments not declared by the contract are dropped. To pass other keyword arguments through
+      # to the method, use `for:` or `keys:`.
+      #
       # Use `for:` to validate the value of a single keyword argument, leaving the others untouched:
       #
       # ```

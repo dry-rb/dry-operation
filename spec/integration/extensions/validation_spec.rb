@@ -409,6 +409,22 @@ RSpec.describe Dry::Operation::Extensions::Validation do
 
       expect(operation.new.call({name: ""})).to eq(Success(name: ""))
     end
+
+    it "drops keyword arguments not declared by the contract" do
+      operation = Class.new(Dry::Operation) do
+        include Dry::Operation::Extensions::Validation
+
+        params do
+          required(:name).filled(:string)
+        end
+
+        def call(name:, notify: false)
+          {name:, notify:}
+        end
+      end
+
+      expect(operation.new.call(name: "Alice", notify: true)).to eq(Success(name: "Alice", notify: false))
+    end
   end
 
   describe "validating a single keyword argument with for:" do
