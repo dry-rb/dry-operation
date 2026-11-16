@@ -271,7 +271,7 @@ module Dry
 
               config = self.class.validation_config
 
-              # Replace the input in the keyword arguments with the contract's output.
+              # Provide the contract's output as the input arguments for this method call.
               if (key = config.for_key)
                 # When the key is missing, the method's own signature decides if that is allowed.
                 kwargs = kwargs.merge(key => step(validate(kwargs[key]))) if kwargs.key?(key)
